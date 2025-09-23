@@ -1,0 +1,50 @@
+ /* Brand font */
+.brand-font {
+    font-family: 'Ginto', 'Whitney', sans-serif;
+}
+
+/* Custom scrollbar - FIXED */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #4f545c transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4f545c;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #72767d;
+}
+
+/* Activity card hover */
+.activity-card {
+    transition: all 0.15s ease;
+}
+
+.activity-card:hover {
+    background-color: rgba(79, 84, 92, 0.16);
+    transform: translateY(-1px);
+}
+
+/* FIXED: Ensure proper height constraints */
+.activity-container {
+    height: 100vh;
+    max-height: 100vh;
+}
+
+.activity-content {
+    height: calc(100vh - 80px); /* Subtract header height */
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}

@@ -1,0 +1,107 @@
+<!-- Top Bar with Tabs -->
+            <div class="h-12 bg-discord-bg border-b border-discord-darkest/30 px-4 flex items-center shadow-sm">
+                <button class="md:hidden mr-3 p-1.5 hover:bg-discord-light rounded btn-hover" onclick="toggleFriendsSidebar()">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                
+                <div class="flex items-center flex-1">
+                    <svg class="w-6 h-6 mr-3 text-discord-text" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                    </svg>
+                    <span class="font-semibold text-white brand-font mr-6">Friends</span>
+                    
+                    <!-- Friend Tabs -->
+                    <div class="flex items-center space-x-4">
+                        <button 
+                        class="tab-button px-2 py-1 rounded text-sm font-medium"
+                        routerLink="/app/friends/online"
+                        routerLinkActive="active"
+                        [ngClass]="{ 'text-discord-text-muted': !isActive('/app/friends/online') }">
+                        Online
+                        </button>
+
+                        <button 
+                        class="tab-button px-2 py-1 rounded text-sm font-medium"
+                        routerLink="/app/friends/all"
+                        routerLinkActive="active"
+                        [ngClass]="{ 'text-discord-text-muted': !isActive('/app/friends/all') }">
+                        All
+                        </button>
+
+                        <button 
+                        class="tab-button px-2 py-1 rounded text-sm font-medium"
+                        routerLink="/app/friends/pending"
+                        routerLinkActive="active"
+                        [ngClass]="{ 'text-discord-text-muted': !isActive('/app/friends/pending') }">
+                        Pending
+                        </button>
+
+                        <button (click)="showAddFriendModal.set(true)" class="bg-discord-green hover:bg-discord-green/80 px-3 py-1 rounded text-sm font-medium text-white transition-colors" onclick="addFriend()">
+                            Add Friend
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button class="p-2 hover:bg-discord-light rounded btn-hover" title="New Group DM">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0018.54 8H17.5c-.83 0-1.54.5-1.84 1.22L14.5 12.5l1.41 1.41L17.31 12c.06-.13.19-.21.33-.21s.27.08.33.21L19.5 18H22z"/>
+                        </svg>
+                    </button>
+                    <button class="p-2 hover:bg-discord-light rounded btn-hover" title="Inbox">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5h3V8h4v4h3l-5 5z"/>
+                        </svg>
+                    </button>
+                    <button class="p-2 hover:bg-discord-light rounded btn-hover" title="Help">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+
+<!-- Modal -->
+<div 
+  *ngIf="showAddFriendModal()"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+>
+  <div class="bg-discord-darkest rounded-2xl shadow-xl w-full max-w-md p-6 animate-fadeIn">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-white">Send Friend Request</h2>
+      <button (click)="closeModal()" class="text-gray-400 hover:text-white">&times;</button>
+    </div>
+
+    <!-- Form -->
+    <form (ngSubmit)="sendFriendRequest()" class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-300 mb-1">Username</label>
+        <input (focus)="errorMessage.set('')" [(ngModel)]="username" name="name" required
+          class="w-full rounded-lg bg-discord-darker border border-gray-600 px-3 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-discord-green focus:outline-none"
+          placeholder="Enter username" />
+      </div>
+
+      <!-- Feedback Message -->
+      <div *ngIf="errorMessage()" 
+           class="p-3 rounded-lg bg-red-500/10 border border-red-500 text-red-400 text-sm">
+        {{ errorMessage() }}
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex justify-end gap-2 mt-6">
+        <button type="button" (click)="closeModal()" 
+          class="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition">
+          Cancel
+        </button>
+        <button type="submit" [disabled]="isSendingRequest()"
+          class="px-4 py-2 rounded-lg bg-discord-green text-white hover:bg-green-600 transition">
+          {{ isSendingRequest() ? 'Sending...' : 'Send' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,136 @@
+  <!-- Friends/DM Sidebar -->
+        <div id="friends-sidebar" class="w-60 bg-discord-sidebar flex flex-col md:relative fixed left-0 top-0 h-full z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-out shadow-discord">
+            <!-- Header -->
+            <div class="h-12 border-b border-discord-darkest/60 px-4 flex items-center shadow-sm">
+                <div class="flex items-center flex-1">
+                    <svg class="w-6 h-6 mr-3 text-discord-text" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                    </svg>
+                    <span class="font-semibold text-white brand-font">Friends</span>
+                </div>
+                <button class="p-1.5 hover:bg-discord-light rounded btn-hover" onclick="openNewDM()" title="Create DM">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Search -->
+            <div class="p-4">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        placeholder="Find or start a conversation"
+                        class="w-full bg-discord-darkest text-sm px-3 py-2.5 rounded-lg border-none outline-none text-discord-text placeholder-discord-text-dark"
+                        id="search-input"
+                    >
+                    <svg class="w-4 h-4 absolute right-3 top-3 text-discord-text-muted" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Direct Messages List -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar">
+                <div class="px-2">
+                    <!-- Direct Messages Header -->
+                    <div class="flex items-center justify-between px-2 py-1 mx-2 text-xs font-semibold text-discord-text-dark uppercase tracking-wide hover:text-discord-text cursor-pointer group">
+                        <div class="flex items-center">
+                            <svg class="w-3 h-3 mr-1 transition-transform duration-150" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M7 14l5-5 5 5z"/>
+                            </svg>
+                            Direct Messages
+                        </div>
+                        <button class="p-1 hover:text-discord-text opacity-0 group-hover:opacity-100 transition-opacity" title="Create DM">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- DM Conversations -->
+                    <div class="space-y-0.5 px-2">
+                        <a href="dm.html" class="block">
+                            <div class="flex items-center px-2 py-2.5 rounded-lg cursor-pointer hover:bg-discord-light/30 transition-colors duration-150">
+                                <div class="relative mr-3 flex-shrink-0">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                        A
+                                    </div>
+                                    <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 status-online border-2 border-discord-sidebar rounded-full"></div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-0.5">
+                                        <div class="text-sm font-medium text-discord-text truncate">AliceCode</div>
+                                        <div class="text-xs text-discord-text-muted">2:45 PM</div>
+                                    </div>
+                                    <div class="text-xs text-discord-text-muted truncate">Great idea! Let me know when...</div>
+                                </div>
+                            </div>
+                        </a>
+
+                        <div class="flex items-center px-2 py-2.5 rounded-lg cursor-pointer hover:bg-discord-light/30 transition-colors duration-150">
+                            <div class="relative mr-3 flex-shrink-0">
+                                <div class="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                    J
+                                </div>
+                                <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 status-idle border-2 border-discord-sidebar rounded-full"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-0.5">
+                                    <div class="text-sm font-medium text-discord-text truncate">JohnGamer</div>
+                                    <div class="text-xs text-discord-text-muted">1:20 PM</div>
+                                </div>
+                                <div class="text-xs text-discord-text-muted truncate">Are you free for gaming tonight?</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center px-2 py-2.5 rounded-lg cursor-pointer hover:bg-discord-light/30 transition-colors duration-150">
+                            <div class="relative mr-3 flex-shrink-0">
+                                <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                    M
+                                </div>
+                                <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 status-dnd border-2 border-discord-sidebar rounded-full"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-0.5">
+                                    <div class="text-sm font-medium text-discord-text truncate">Mike_Dev</div>
+                                    <div class="text-xs text-discord-text-muted">Yesterday</div>
+                                </div>
+                                <div class="text-xs text-discord-text-muted truncate">Check out this new API I found</div>
+                            </div>
+                            <div class="w-2 h-2 bg-discord-red rounded-full ml-2 flex-shrink-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Area -->
+            <div class="h-14 bg-discord-darkest/30 px-2 flex items-center border-t border-discord-darkest/60">
+                <div class="flex items-center flex-1 min-w-0">
+                    <div class="w-8 h-8 bg-gradient-to-br from-discord-blurple to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-semibold mr-2">
+                        Y
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-white truncate">YourUsername</div>
+                        <div class="text-xs text-discord-text-muted truncate">#1234</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button class="p-1.5 hover:bg-discord-light rounded btn-hover" title="Mute">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+                        </svg>
+                    </button>
+                    <button class="p-1.5 hover:bg-discord-light rounded btn-hover" title="Deafen">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z"/>
+                        </svg>
+                    </button>
+                    <button class="p-1.5 hover:bg-discord-light rounded btn-hover" title="Settings">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 15.5A3.5 3.5 0 018.5 12 3.5 3.5 0 0112 8.5a3.5 3.5 0 013.5 3.5 3.5 3.5 0 01-3.5 3.5zm7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65A.506.506 0 0014 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1.01c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>

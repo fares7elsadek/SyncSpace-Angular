@@ -1,0 +1,232 @@
+/* Updated Button styles - SVG as the entire clickable button */
+.home-button {
+  position: relative;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: block;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 24px; /* Discord-like rounded corners */
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  /* Add z-index to create stacking context */
+  z-index: 10;
+}
+
+.home-button:hover {
+  border-radius: 16px; /* Less rounded on hover like Discord */
+  transform: translateY(-2px);
+  filter: drop-shadow(0 8px 16px rgba(124, 58, 237, 0.25));
+  /* Increase z-index on hover */
+  z-index: 1001;
+}
+
+.home-button:hover .orbital-ring {
+  animation-duration: 2s !important;
+}
+
+.home-button:hover .pulsing-nodes circle {
+  animation-duration: 1s !important;
+}
+
+.home-button:hover .orbital-elements circle {
+  animation-duration: 8s !important;
+}
+
+.home-button:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(8px);
+}
+
+.home-button:active {
+  transform: translateY(-1px) scale(0.95);
+  transition: all 0.15s ease;
+}
+
+.home-button:focus {
+  outline: none;
+  filter: drop-shadow(0 0 0 3px rgba(124, 58, 237, 0.3));
+}
+
+/* SVG fills the entire button area */
+.logo-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tooltip {
+  position: absolute;
+  left: 58px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #18191c;
+  color: #dcddde;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  /* Significantly increase z-index to appear above everything */
+  z-index: 9999;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+}
+
+.tooltip::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 4px solid #18191c;
+}
+
+/* Alternative approach - Create tooltip using fixed positioning */
+.tooltip-fixed {
+  position: fixed !important;
+  left: calc(20px + 58px); /* Adjust based on sidebar width + button position */
+  top: 50%;
+  transform: translateY(-50%);
+  background: #18191c;
+  color: #dcddde;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 99999;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+}
+
+/* Server button tooltips fix */
+.server-button {
+  position: relative;
+  z-index: 10;
+}
+
+.server-button:hover {
+  z-index: 1001;
+}
+
+/* Target the server tooltips specifically */
+.server-button .absolute.left-16 {
+  z-index: 9999 !important;
+  position: fixed !important;
+  left: 78px !important; /* Adjust based on your sidebar width */
+}
+
+/* Alternative approach - add these classes to your server buttons */
+.server-tooltip {
+  position: absolute;
+  left: 58px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #18191c;
+  color: #dcddde;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+  scale: 0.95;
+}
+
+.server-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 4px solid #18191c;
+}
+
+/* Show tooltip on server button hover */
+.group:hover .server-tooltip {
+  opacity: 1;
+  visibility: visible;
+  scale: 1;
+  transform: translateY(-50%) translateX(8px);
+}
+
+/* Alternative - target button hover directly */
+button:hover .server-tooltip {
+  opacity: 1;
+  visibility: visible;
+  scale: 1;
+  transform: translateY(-50%) translateX(8px);
+}
+
+/* Fix for Add Server button tooltip */
+.add-server-tooltip {
+  position: absolute;
+  left: 58px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #18191c;
+  color: #dcddde;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+}
+
+.add-server-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 4px solid #18191c;
+}
+
+.group:hover .add-server-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(8px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
