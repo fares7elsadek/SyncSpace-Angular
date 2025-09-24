@@ -7,6 +7,7 @@ import { PendingFriends } from './components/pending-friends/pending-friends';
 import { AuthGuard } from './guards/auth.guard-guard';
 import { MainComponent } from './components/main-component/main-component';
 import { DMChatComponent } from './components/dmchat-component/dmchat-component';
+import { ChannelChatMessagesComponent } from './components/channel-chat-messages-component/channel-chat-messages-component';
 
 
 
@@ -46,8 +47,14 @@ export const routes: Routes = [
                  ]
             },
             {
-                path:"server/:id",
-                component:ServerComponent
+                path:"server/:serverId",
+                component:ServerComponent,
+                children:[
+                    {
+                        path:"channel/:channelId",
+                        component:ChannelChatMessagesComponent
+                    }
+                ]
             },
             {
                 path:"dm/:userId",

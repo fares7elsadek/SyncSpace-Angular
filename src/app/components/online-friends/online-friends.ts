@@ -1,5 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, signal, WritableSignal } from '@angular/core';
+import { FriendshipDto } from '../../models/api.model';
+import { Subject, takeUntil } from 'rxjs';
+import { ApiService } from '../../services/api.service';
+import { ToastrService } from 'ngx-toastr';
+import { WebsocketService } from '../../services/websocket.service';
 
 
 @Component({
@@ -9,12 +14,54 @@ import { Component } from '@angular/core';
   styleUrl: './online-friends.css'
 })
 export class OnlineFriends {
-  friendsData: any = [
-    { name: 'AliceCode', avatar: 'A', color: 'from-purple-500 to-indigo-600', status: 'online', activity: 'Playing Visual Studio Code' },
-                { name: 'JohnGamer', avatar: 'J', color: 'from-emerald-500 to-green-600', status: 'online', activity: 'Playing Valorant' },
-                { name: 'Mike_Dev', avatar: 'M', color: 'from-red-500 to-pink-600', status: 'dnd', activity: 'Busy coding' },
-                { name: 'Sarah_Design', avatar: 'S', color: 'from-blue-500 to-cyan-600', status: 'idle', activity: 'Away - Working on designs' }
-  ]
+  friends: WritableSignal<FriendshipDto[]> = signal([]);
+  onlineNumber= signal(0);
+  
+  private destroy$ = new Subject<void>();
+  activeFriendOptions = signal("");
+
+  constructor(private apiServer:ApiService,private toastr:ToastrService,private websocketService:WebsocketService){}
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  ngOnInit(): void {
+    this.loadFriends();
+    this.websocketService.presence$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe((message) => {
+      this.updateFriendOnlineStatus(message.userId, message.status);
+      this.onlineNumber.set(this.onlineFriends());
+    });
+  }
+
+
+  loadFriends(){
+    this.apiServer.getFriends()
+    .subscribe({
+      next:(response)=>{
+        this.friends.set(response.data);
+      },
+      error:(err)=>{
+        this.toastr.error(err.error.error);
+      }
+    })
+  }
+
+  updateFriendOnlineStatus(friendId: string, status: string) {
+  this.friends.update(friendsList => 
+    friendsList.map(friend => 
+      friend.user.id === friendId 
+        ? { 
+            ...friend, 
+            user: { ...friend.user, isOnline: this.getStatus(status) } 
+          } 
+        : friend
+    )
+  );
+}
 
   startDM(name: any){
 
@@ -25,5 +72,17 @@ export class OnlineFriends {
 
   showFriendOptions(name: any){
     
+  }
+
+  getStatus(status:string): boolean{
+    return status === 'ONLINE' ? true : false;
+  }
+
+  friendStatus(online: boolean): string{
+    return online ? 'online' : 'offline';
+  }
+
+  onlineFriends(){
+    return this.friends().filter((f) => f.user.isOnline == true).length;
   }
 }

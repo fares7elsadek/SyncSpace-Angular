@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { UserDto } from '../models/api.model';
+import { ApiResponse, UserDto } from '../models/api.model';
 import { KeycloakService } from 'keycloak-angular';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../environments/environment';
@@ -55,9 +55,9 @@ export class AuthService {
   
   async loadUserInfo(): Promise<void>{
     try {
-      await this.http.get<UserDto>(`${environment.apiUrl}/auth/getUser`).subscribe({
-        next:(userInfo)=>{
-          this.currentUserSubject.next(userInfo);
+      await this.http.get<ApiResponse<UserDto>>(`${environment.apiUrl}/auth/userData`).subscribe({
+        next:(respone)=>{
+          this.currentUserSubject.next(respone.data);
         }
       });
     } catch (error) {

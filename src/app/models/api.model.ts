@@ -56,7 +56,6 @@ export interface NotificationDto {
 export interface PresenceMessage {
   userId: string;
   status: 'ONLINE' | 'OFFLINE';
-  timestamp: string;
 }
 
 export interface TypingMessage {

@@ -34,7 +34,7 @@ export class ApiService {
   }
 
   getServer(id: string): Observable<ApiResponse<ServerDto>> {
-    return this._httpClient.get<ApiResponse<ServerDto>>(`${this.baseUrl}/servers/${id}`);
+    return this._httpClient.get<ApiResponse<ServerDto>>(`${this.baseUrl}/server/${id}`);
   }
 
   createServer(request: CreateServerRequest): Observable<ApiResponse<ServerDto>> {

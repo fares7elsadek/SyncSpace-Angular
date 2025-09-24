@@ -5,6 +5,7 @@ import { ApiService } from '../../services/api.service';
 import { FriendshipDto } from '../../models/api.model';
 import { ToastrService } from 'ngx-toastr';
 import { FormsModule } from '@angular/forms';
+import { FriendAcceptedEvent } from '../../services/friend-accepted-event';
 
 
 @Component({
@@ -16,10 +17,10 @@ import { FormsModule } from '@angular/forms';
 export class PendingFriends implements OnInit,OnDestroy {
 
   pendingRequests:WritableSignal<FriendshipDto[]>=  signal([]);
-
+  pendingNumber = signal(0);
   
   private destroy$ = new Subject<void>();
-  constructor(private apiServer:ApiService,private toastr:ToastrService){}
+  constructor(private apiServer:ApiService,private toastr:ToastrService,private friendAcceptedEvent:FriendAcceptedEvent){}
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -51,6 +52,7 @@ export class PendingFriends implements OnInit,OnDestroy {
       next:()=>{
         this.toastr.success("Friend request accepted successfully");
         this.loadPendingData();
+        this.friendAcceptedEvent.notifyAcceptedEvent();
       },
       error:(err)=>{
         this.toastr.error(err.error.error);
@@ -64,6 +66,7 @@ export class PendingFriends implements OnInit,OnDestroy {
       next:()=>{
         this.toastr.success("Friend request rejected successfully");
         this.loadPendingData();
+        this.pendingNumber.set(this.pendingRequests().length);
       },
       error:(err)=>{
         this.toastr.error(err.error.error);

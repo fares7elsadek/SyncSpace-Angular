@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, signal, WritableSignal } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { ToastrService } from 'ngx-toastr';
 import { FriendshipDto } from '../../models/api.model';
+import { WebsocketService } from '../../services/websocket.service';
 
 @Component({
   selector: 'app-all-friends-component',
@@ -17,7 +18,7 @@ export class AllFriendsComponent implements OnInit,OnDestroy {
   private destroy$ = new Subject<void>();
   activeFriendOptions = signal("");
 
-  constructor(private apiServer:ApiService,private toastr:ToastrService){}
+  constructor(private apiServer:ApiService,private toastr:ToastrService,private websocketService:WebsocketService){}
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -26,6 +27,11 @@ export class AllFriendsComponent implements OnInit,OnDestroy {
 
   ngOnInit(): void {
     this.loadFriends();
+    this.websocketService.presence$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe((message) => {
+      this.updateFriendOnlineStatus(message.userId, message.status);
+    });
   }
 
 
@@ -69,6 +75,25 @@ export class AllFriendsComponent implements OnInit,OnDestroy {
         this.toastr.error(err.error.error);
       }
     })
+  }
+
+  updateFriendOnlineStatus(friendId: string, status: string) {
+  this.friends.update(friendsList => 
+    friendsList.map(friend => 
+      friend.user.id === friendId 
+        ? { 
+            ...friend, 
+            user: { ...friend.user, isOnline: this.getStatus(status) } 
+          } 
+        : friend
+    )
+  );
+}
+
+
+
+  getStatus(status:string): boolean{
+    return status === 'ONLINE' ? true : false;
   }
 
   friendStatus(online: boolean): string{
