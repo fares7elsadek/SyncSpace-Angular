@@ -57,7 +57,7 @@ export const routes: Routes = [
                 ]
             },
             {
-                path:"dm/:userId",
+                path:"dm/:channelId",
                 component:DMChatComponent
             },
             {

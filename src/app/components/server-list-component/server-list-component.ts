@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ServerDto } from '../../models/api.model';
+import { ServerDto, ServerMember } from '../../models/api.model';
 import { ApiService } from '../../services/api.service';
 import { Subject, takeUntil } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -63,4 +63,5 @@ export class ServerListComponent implements OnInit,OnDestroy {
     return this.router.url.startsWith(route);
   }
 
+  
 }

@@ -9,6 +9,7 @@ import { ToastrService } from 'ngx-toastr';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FriendAcceptedEvent } from '../../services/friend-accepted-event';
+import { MessagesReadEvent } from '../../services/messages-read-event';
 
 @Component({
   selector: 'app-friends-side-bar-component',
@@ -26,7 +27,8 @@ export class FriendsSideBarComponent implements OnInit,OnDestroy{
     private router:Router,
     private websocketService:WebsocketService,
     private tostr:ToastrService,
-    private friendAcceptedEvent:FriendAcceptedEvent
+    private friendAcceptedEvent:FriendAcceptedEvent,
+    private messageRead:MessagesReadEvent
   ){}
 
   ngOnInit(): void {
@@ -36,9 +38,22 @@ export class FriendsSideBarComponent implements OnInit,OnDestroy{
     .subscribe((message) => {
       this.updateFriendOnlineStatus(message.userId, message.status);
     });
-    this.friendAcceptedEvent.serverCreated$.subscribe(()=>{
+    this.friendAcceptedEvent.serverCreated$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(()=>{
       this.loadChats();
     })
+    this.messageRead.messageRead$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(()=>{
+      this.loadChats();
+    })
+
+    this.websocketService.messages$
+    .pipe(takeUntil(this.destroy$))
+        .subscribe((message)=>{
+          this.loadChats();
+        })
   }
 
   ngOnDestroy(): void {

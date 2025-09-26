@@ -87,7 +87,7 @@ export class WebsocketService {
       return;
     }
 
-    this.stompClient.subscribe('/queue/private/messages', (message: IMessage) => {
+    this.stompClient.subscribe(`/topic/user/${currentUser.id}/message`, (message: IMessage) => {
       console.log('Private message received:', message);
       const messageDto: MessageDto = JSON.parse(message.body);
       this.messagesSubject.next(messageDto);
@@ -170,15 +170,22 @@ export class WebsocketService {
     });
   }
 
-  // Debug method to test user destinations
-  testUserDestination(targetUserId: string): void {
+  
+  startViewing(channelId: string) {
     if (!this.stompClient?.connected) return;
-
-    console.log('Testing user destination for:', targetUserId);
-    
     this.stompClient.publish({
-      destination: '/app/test-user-destination',
-      body: JSON.stringify({ targetUserId })
+      destination: '/app/channel/view/start',
+      body: JSON.stringify({ channelId }),
     });
   }
+
+  stopViewing(channelId: string) {
+    if (!this.stompClient?.connected) return;
+    this.stompClient.publish({
+      destination: '/app/channel/view/end',
+      body: JSON.stringify({ channelId }),
+    });
+  }
+
+ 
 }

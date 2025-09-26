@@ -34,9 +34,8 @@ export interface MessageDto {
   content: string;
   sender: UserDto;
   channelId: string;
-  attachmentUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  attachmentUrls?: string[];
+  sentAt: string;
 }
 
 export interface FriendshipDto {
@@ -117,9 +116,19 @@ export interface addMemberResponse{
   channel:ChannelDto
 }
 
+export interface ChannelChat{
+  id: string;
+  name: string;
+  description?: string;
+  isPrivate:boolean;
+  isGroup:boolean;
+  lastReadMessage:MessageDto,
+  unReadMessages:number
+}
+
 export interface UserChat{
   user:UserDto,
-  channel:ChannelDto
+  channel:ChannelChat
 }
 
 export interface PaginatedMessage{
@@ -132,4 +141,10 @@ export interface ApiResponse<T>{
     success:boolean,
     message:string,
     data:T
+}
+
+export interface ServerMember{
+  role:string,
+  nickname:string,
+  serverUserDto:UserDto
 }

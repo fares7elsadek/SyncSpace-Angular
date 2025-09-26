@@ -15,6 +15,7 @@ import {
   PaginatedMessage, 
   SendMessageRequest, 
   ServerDto, 
+  ServerMember, 
   UpdateUserProfileRequest, 
   UserChat, 
   UserDto 
@@ -59,6 +60,10 @@ export class ApiService {
 
   leaveServer(id: string): Observable<ApiResponse<void>> {
     return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/server/${id}/leave`, {});
+  }
+
+  getServerMembers(serverId: string): Observable<ApiResponse<ServerMember[]>> {
+    return this._httpClient.get<ApiResponse<ServerMember[]>>(`${this.baseUrl}/server/${serverId}/members`)
   }
 
 
@@ -165,7 +170,7 @@ export class ApiService {
 
   // User endpoints
   getUserProfile(id: string): Observable<ApiResponse<UserDto>> {
-    return this._httpClient.get<ApiResponse<UserDto>>(`${this.baseUrl}/users/${id}`);
+    return this._httpClient.get<ApiResponse<UserDto>>(`${this.baseUrl}/auth/user/${id}`);
   }
 
   updateUserProfile(request: UpdateUserProfileRequest): Observable<ApiResponse<UserDto>> {
