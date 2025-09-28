@@ -29,7 +29,7 @@ export class OnlineFriends {
 
   ngOnInit(): void {
     this.loadFriends();
-    this.websocketService.presence$
+    this.websocketService.userPresence$
     .pipe(takeUntil(this.destroy$))
     .subscribe((message) => {
       this.updateFriendOnlineStatus(message.userId, message.status);

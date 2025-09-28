@@ -8,6 +8,7 @@ import { AuthGuard } from './guards/auth.guard-guard';
 import { MainComponent } from './components/main-component/main-component';
 import { DMChatComponent } from './components/dmchat-component/dmchat-component';
 import { ChannelChatMessagesComponent } from './components/channel-chat-messages-component/channel-chat-messages-component';
+import { InviteServerComponent } from './components/invite-server-component/invite-server-component';
 
 
 
@@ -53,7 +54,7 @@ export const routes: Routes = [
                     {
                         path:"channel/:channelId",
                         component:ChannelChatMessagesComponent
-                    }
+                    },
                 ]
             },
             {
@@ -66,6 +67,11 @@ export const routes: Routes = [
                 pathMatch:"full"
             }
         ]
+    },
+    {
+        path:"invite/server/:serverId",
+        component:InviteServerComponent,
+        canActivate:[AuthGuard]
     },
     {
         path: '**',

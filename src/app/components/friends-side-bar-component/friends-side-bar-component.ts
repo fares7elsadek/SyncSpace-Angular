@@ -33,7 +33,7 @@ export class FriendsSideBarComponent implements OnInit,OnDestroy{
 
   ngOnInit(): void {
     this.loadChats();
-    this.websocketService.presence$
+    this.websocketService.userPresence$
     .pipe(takeUntil(this.destroy$))
     .subscribe((message) => {
       this.updateFriendOnlineStatus(message.userId, message.status);
@@ -49,11 +49,13 @@ export class FriendsSideBarComponent implements OnInit,OnDestroy{
       this.loadChats();
     })
 
-    this.websocketService.messages$
-    .pipe(takeUntil(this.destroy$))
-        .subscribe((message)=>{
+    this.websocketService.generalMessages$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(()=>{
           this.loadChats();
         })
+
+    
   }
 
   ngOnDestroy(): void {

@@ -19,8 +19,6 @@
                     [src]="user()?.avatarUrl" 
                     alt="User Avatar" 
                     class="w-8 h-8 rounded-full object-cover avatar-smooth"
-                    (load)="onAvatarLoad()"
-                    (error)="onAvatarError()"
                 />
                 <ng-template #avatarFallback>
                     <span class="text-white font-semibold text-sm avatar-text">
@@ -116,7 +114,6 @@
                     [src]="user()?.avatarUrl"
                     [alt]="user()?.username + ' Avatar'"
                     class="conversation-avatar"
-                    (error)="onAvatarError()"
                 />
                 <ng-template #initialsFallback>
                     <span class="conversation-initials">
@@ -141,7 +138,6 @@
                         [src]="message.sender.avatarUrl" 
                         alt="User Avatar" 
                         class="message-avatar"
-                        (error)="onMessageAvatarError($event)"
                     />
                     <ng-template #messageSenderFallback>
                         <span class="message-avatar-text">
@@ -226,7 +222,7 @@
     </div>
 
     <!-- Message Composer -->
-    <app-message-composer [channelId]="channelId" [userId]="userId" ></app-message-composer>
+    <app-message-composer [channelId]="chatState.channelId" [userId]="chatState.userId" ></app-message-composer>
 </div>
 
 <app-user-panel-component></app-user-panel-component>

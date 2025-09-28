@@ -1,21 +1,19 @@
+<app-channel-sidebar-component></app-channel-sidebar-component>
 
-  <app-channel-sidebar-component></app-channel-sidebar-component>
-  <!-- Main Content Area -->
-  <div class="flex-1 flex flex-col">
-    <app-top-bar-component/>
-    <!-- Chat Messages Area -->
-    <div class="flex-1 flex">
-      <!-- Messages -->
-      <div class="flex-1 flex flex-col">
-        <div id="messages-container" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          <router-outlet></router-outlet>
-        </div>
-        <!-- Message Composer -->
-        <app-message-composer/>
-      </div>
-      <!-- Members List -->
-      <div id="members-list" class="w-60 bg-discord-gray border-l border-discord-light flex-col hidden md:flex">
-        <app-members-list-component></app-members-list-component>
-      </div>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col">
+  <app-top-bar-component/>
+  
+  <!-- Chat Messages Area - Add the new class -->
+  <div class="flex-1 flex chat-messages-area">
+    <!-- Messages - Add the new class -->
+    <div class="flex-1 flex flex-col messages-container-wrapper">
+      <router-outlet></router-outlet>
+    </div>
+    
+    <!-- Members List -->
+    <div id="members-list" class="w-60 bg-discord-gray border-l border-discord-light flex-col hidden md:flex">
+      <app-members-list-component></app-members-list-component>
     </div>
   </div>
+</div>

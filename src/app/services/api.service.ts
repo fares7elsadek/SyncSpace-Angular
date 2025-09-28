@@ -66,6 +66,10 @@ export class ApiService {
     return this._httpClient.get<ApiResponse<ServerMember[]>>(`${this.baseUrl}/server/${serverId}/members`)
   }
 
+  addServerMember(serverId: string,username: string): Observable<ApiResponse<void>> {
+    return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/server/${serverId}/member/${username}`, {});
+  }
+
 
   // Channel endpoints
   getChannels(serverId: string): Observable<ApiResponse<ChannelDto[]>> {

@@ -22,7 +22,7 @@ export class AppGlobalModal implements OnInit,OnDestroy {
   newServer: CreateServerRequest = {
     name: '',
     description: '',
-    isPublic: false
+    isPublic: true
   };
   
   private destroy$ = new Subject<void>();

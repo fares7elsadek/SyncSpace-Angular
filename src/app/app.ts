@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AuthService } from './services/auth.service';
 import { WebsocketService } from './services/websocket.service';
+import { InviteServerComponent } from './components/invite-server-component/invite-server-component';
 
 
 @Component({

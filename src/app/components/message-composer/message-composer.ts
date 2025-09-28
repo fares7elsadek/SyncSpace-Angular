@@ -60,7 +60,6 @@ export class MessageComposer implements OnInit, OnDestroy, AfterViewInit,OnChang
       })
       return;
     }
-    
     if(this.channelId.trim()){
       this.apiService.getChannel(this.channelId)
       .pipe(takeUntil(this.destroy$))
