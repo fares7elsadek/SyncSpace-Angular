@@ -93,141 +93,31 @@
 /* SCROLLBAR STYLES - Applied to the server container */
 .server-scroll-area {
   overflow-y: auto;
-  overflow-x: visible;
-  scrollbar-width: thin;
-  scrollbar-color: #2b2d31 #1e1f22;
+  overflow-x: hidden;
+  scrollbar-width: none;
   height: 100%;
-}
-
-/* Webkit scrollbar styling */
-.server-scroll-area::-webkit-scrollbar {
-  width: 8px;
-}
-
-.server-scroll-area::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 4px;
-}
-
-.server-scroll-area::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  transition: background 0.2s ease;
-}
-
-.server-scroll-area:hover::-webkit-scrollbar-thumb {
-  background: #2b2d31;
-  background-clip: content-box;
-}
-
-.server-scroll-area::-webkit-scrollbar-thumb:hover {
-  background: #3c3f44 !important;
-  background-clip: content-box;
-}
-
-/* Smooth scrolling */
-.server-scroll-area {
   scroll-behavior: smooth;
 }
 
-/* Firefox scrollbar styling */
-@supports (scrollbar-width: thin) {
-  .server-scroll-area {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
-  
-  .server-scroll-area:hover {
-    scrollbar-color: #2b2d31 transparent;
-  }
-}
-
-/* Discord-style Scrollbar Container */
-.server-scroll-container {
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: #202225 transparent;
-  position: relative;
-}
-
-/* Webkit Scrollbar Styling (Chrome, Safari, Edge) */
-.server-scroll-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.server-scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 4px;
-}
-
-.server-scroll-container::-webkit-scrollbar-thumb {
-  background: #202225;
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  transition: background-color 0.15s ease;
-}
-
-.server-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #2e3136;
-  background-clip: padding-box;
-}
-
-.server-scroll-container::-webkit-scrollbar-thumb:active {
-  background: #40444b;
-  background-clip: padding-box;
-}
-
-/* Hide scrollbar by default, show on hover */
-.server-scroll-container {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-
-.server-scroll-container::-webkit-scrollbar {
+/* Hide webkit scrollbar completely */
+.server-scroll-area::-webkit-scrollbar {
   width: 0px;
   background: transparent;
 }
 
-/* Show scrollbar on parent hover */
-.server-scroll-container:hover {
-  scrollbar-width: thin;
+.server-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.server-scroll-container:hover::-webkit-scrollbar {
-  width: 8px;
+.server-scroll-area::-webkit-scrollbar-thumb {
+  background: transparent;
 }
 
-/* Fade effects for scroll indication */
-.scroll-fade-top,
-.scroll-fade-bottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 12px;
-  pointer-events: none;
-  z-index: 20;
-  transition: opacity 0.2s ease;
-}
-
-.scroll-fade-top {
-  top: 0;
-  background: linear-gradient(180deg, #2f3136 0%, transparent 100%);
-  opacity: 0;
-}
-
-.scroll-fade-bottom {
-  bottom: 0;
-  background: linear-gradient(0deg, #2f3136 0%, transparent 100%);
-  opacity: 0;
-}
-
-/* Smooth scrolling */
-.server-scroll-container {
-  scroll-behavior: smooth;
+/* Firefox scrollbar hiding */
+@supports (scrollbar-width: none) {
+  .server-scroll-area {
+    scrollbar-width: none;
+  }
 }
 
 /* PORTAL TOOLTIPS - These are rendered outside the scroll container */
@@ -241,7 +131,7 @@
   height: 100vh;
 }
 
-/* Server tooltip styles - positioned via JavaScript with smooth transitions */
+/* Server tooltip styles - FIXED: Instant show/hide like Discord */
 .server-tooltip-portal {
   position: absolute;
   background: #18191c;
@@ -253,24 +143,20 @@
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-              left 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* REMOVED: Smooth transitions that were causing the annoying effect */
+  transition: none;
   pointer-events: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-  transform: translateY(-50%) translateX(-12px) scale(0.92);
+  transform: translateY(-50%);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  will-change: transform, opacity, left, top;
 }
 
 .server-tooltip-portal.show {
   opacity: 1;
   visibility: visible;
-  transform: translateY(-50%) translateX(8px) scale(1);
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-              left 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* INSTANT show - no transition */
+  transition: none;
 }
 
 .server-tooltip-portal::before {
@@ -286,13 +172,39 @@
   border-right: 5px solid #18191c;
 }
 
-/* Fallback server tooltip inside buttons (hidden by default) */
-.server-tooltip {
-  display: none;
+/* Server button styling */
+.server-button {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: hidden;
+  background: transparent;
 }
 
-/* Enhanced Add Server button styling */
-button[class*="add-server"] {
+.server-button:hover {
+  border-radius: 16px;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(88, 101, 242, 0.3);
+}
+
+.server-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 24px;
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.server-button:hover img {
+  border-radius: 16px;
+}
+
+/* Add Server button styling - FIXED: Now positioned at bottom */
+.add-server-btn {
   position: relative;
   width: 48px;
   height: 48px;
@@ -307,31 +219,31 @@ button[class*="add-server"] {
   overflow: hidden;
 }
 
-button[class*="add-server"]:hover {
+.add-server-btn:hover {
   border-radius: 16px;
   background: #5865f2;
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(88, 101, 242, 0.3);
 }
 
-button[class*="add-server"] svg {
+.add-server-btn svg {
   width: 24px;
   height: 24px;
   color: #5865f2;
   transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-button[class*="add-server"]:hover svg {
+.add-server-btn:hover svg {
   color: white;
   transform: rotate(90deg);
 }
 
-/* Improved Add Server tooltip */
+/* Add Server tooltip - Same instant behavior as server tooltips */
 .add-server-tooltip {
   position: absolute;
   left: 58px;
   top: 50%;
-  transform: translateY(-50%) translateX(-12px) scale(0.92);
+  transform: translateY(-50%);
   background: #18191c;
   color: #dcddde;
   padding: 8px 12px;
@@ -362,41 +274,9 @@ button[class*="add-server"]:hover svg {
   border-right: 5px solid #18191c;
 }
 
-.group:hover .add-server-tooltip {
+.add-server-btn:hover .add-server-tooltip {
   opacity: 1;
   visibility: visible;
-  transform: translateY(-50%) translateX(8px) scale(1);
-}
-
-/* Server icon buttons styling */
-button[routerLink*="server"] {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 24px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  overflow: hidden;
-  background: #5865f2;
-}
-
-button[routerLink*="server"]:hover {
-  border-radius: 16px;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(88, 101, 242, 0.3);
-}
-
-button[routerLink*="server"] img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 24px;
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-button[routerLink*="server"]:hover img {
-  border-radius: 16px;
 }
 
 /* Active indicator improvements */
@@ -405,6 +285,17 @@ button[routerLink*="server"]:hover img {
   border-radius: 0 4px 4px 0;
   transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/* Button focus styles */
+button:focus-visible {
+  outline: 2px solid #5865f2;
+  outline-offset: 2px;
+}
+
+/* Micro-interactions for server icons */
+.space-y-2 > div {
+  transition: transform 0.2s ease;
 }
 
 @keyframes fadeIn {
@@ -420,19 +311,4 @@ button[routerLink*="server"]:hover img {
 
 .animate-fadeIn {
   animation: fadeIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-/* Additional hover effects for better UX */
-button:focus-visible {
-  outline: 2px solid #5865f2;
-  outline-offset: 2px;
-}
-
-/* Micro-interactions for server icons */
-.space-y-2 > div {
-  transition: transform 0.2s ease;
-}
-
-.space-y-2 > div:hover {
-  transform: scale(1.05);
 }

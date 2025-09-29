@@ -10,6 +10,7 @@ import { InviteModal } from '../../services/invite-modal';
 interface ServerInviteInfo {
   name: string;
   iconUrl?: string;
+  membersNumber:number
 }
 
 interface Star {

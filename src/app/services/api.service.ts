@@ -70,6 +70,10 @@ export class ApiService {
     return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/server/${serverId}/member/${username}`, {});
   }
 
+  getServerMember(serverId: string): Observable<ApiResponse<ServerMember>> {
+    return this._httpClient.get<ApiResponse<ServerMember>>(`${this.baseUrl}/server/${serverId}/member`)
+  }
+
 
   // Channel endpoints
   getChannels(serverId: string): Observable<ApiResponse<ChannelDto[]>> {
@@ -123,10 +127,17 @@ export class ApiService {
     return this._httpClient.delete<ApiResponse<void>>(`${this.baseUrl}/message/${id}`);
   }
 
+  getMessage(id: string): Observable<ApiResponse<MessageDto>> {
+    return this._httpClient.delete<ApiResponse<MessageDto>>(`${this.baseUrl}/message/${id}`);
+  }
 
   // Friend endpoints
   getFriends(): Observable<ApiResponse<FriendshipDto[]>> {
     return this._httpClient.get<ApiResponse<FriendshipDto[]>>(`${this.baseUrl}/friends`);
+  }
+
+  getFriend(id:string): Observable<ApiResponse<FriendshipDto>> {
+    return this._httpClient.get<ApiResponse<FriendshipDto>>(`${this.baseUrl}/friends/${id}`);
   }
 
   getPendingFriendRequests(): Observable<ApiResponse<FriendshipDto[]>> {
@@ -151,8 +162,8 @@ export class ApiService {
 
 
   // Notification endpoints
-  getNotifications(): Observable<ApiResponse<NotificationDto[]>> {
-    return this._httpClient.get<ApiResponse<NotificationDto[]>>(`${this.baseUrl}/notification`);
+  getNotifications(page:number,size:number): Observable<ApiResponse<NotificationDto[]>> {
+    return this._httpClient.get<ApiResponse<NotificationDto[]>>(`${this.baseUrl}/notification?page=${page}&size=${size}`);
   }
 
   getUnreadNotifications(): Observable<ApiResponse<NotificationDto[]>> {

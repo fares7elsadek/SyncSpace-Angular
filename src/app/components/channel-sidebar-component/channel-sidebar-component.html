@@ -11,8 +11,8 @@
                     <path d="M7 10l5 5 5-5z"/>
                 </svg>
             </button>
-            
-            <!-- Server Options Dropdown -->
+            <ng-container *ngIf="isAdmin()">
+               <!-- Server Options Dropdown -->
             <div *ngIf="showServerMenu()" 
                  class="absolute right-0 top-full mt-1 w-48 bg-discord-darkest rounded-lg shadow-xl border border-discord-light/20 py-2 z-50 animate-fadeIn">
                 
@@ -43,6 +43,8 @@
                     Delete Server
                 </button>
             </div>
+            </ng-container>
+           
         </div>
     </div>
 
@@ -57,11 +59,14 @@
                     </svg>
                     Text Channels
                 </div>
-                <button (click)="showCreateChannelModal.set(true)" class="p-1 hover:text-discord-text opacity-0 group-hover:opacity-100 transition-opacity">
+                <ng-container *ngIf="isAdmin()">
+                   <button (click)="showCreateChannelModal.set(true)" class="p-1 hover:text-discord-text opacity-0 group-hover:opacity-100 transition-opacity">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                     </svg>
                 </button>
+                </ng-container>
+               
             </div>
 
             <div class="space-y-0.5 px-2">

@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ModalService } from '../../services/modal-service';
 import { ServerEventsService } from '../../services/server-events-service';
+import { DeleteServerEvent } from '../../services/delete-server-event';
 
 @Component({
   selector: 'app-server-list-component',
@@ -23,12 +24,14 @@ export class ServerListComponent implements OnInit, OnDestroy {
   tooltipText = '';
   
   private destroy$ = new Subject<void>();
+  private tooltipTimeout?: number;
 
   constructor(
     private apiService: ApiService,
     private router: Router,
     public modal: ModalService,
-    private serverEvent: ServerEventsService
+    private serverEvent: ServerEventsService,
+    private deletServerEvent:DeleteServerEvent
   ) {}
 
   ngOnInit(): void {
@@ -36,11 +39,19 @@ export class ServerListComponent implements OnInit, OnDestroy {
     this.serverEvent.serverCreated$.subscribe(() => {
       this.loadServers();
     });
+    this.deletServerEvent.deleteServer$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(()=>{
+      this.loadServers();
+    })
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+    }
   }
 
   loadServers(): void {
@@ -56,26 +67,32 @@ export class ServerListComponent implements OnInit, OnDestroy {
       });
   }
 
-  showServerTooltip(event: MouseEvent, serverName: string, index: number) {
+  showServerTooltip(event: MouseEvent, serverName: string) {
+    // Clear any existing timeout
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+    }
+
     const button = event.currentTarget as HTMLButtonElement;
     const buttonRect = button.getBoundingClientRect();
     
-    // If tooltip is already showing, just update position and text smoothly
-    if (this.showTooltip) {
-      this.tooltipText = serverName;
-      this.updateTooltipPosition(buttonRect);
-    } else {
-      // First time showing, set text and position then show
-      this.tooltipText = serverName;
+    // Set text and position immediately (Discord-like instant show)
+    this.tooltipText = serverName;
+    this.updateTooltipPosition(buttonRect);
+    
+    // Show tooltip instantly with a tiny delay to ensure positioning is applied
+    this.tooltipTimeout = setTimeout(() => {
       this.showTooltip = true;
-      
-      setTimeout(() => {
-        this.updateTooltipPosition(buttonRect);
-      }, 0);
-    }
+    }, 50); // Very small delay, just enough for positioning
   }
 
   hideServerTooltip() {
+    // Clear any pending show timeout
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+    }
+    
+    // Hide instantly (Discord behavior)
     this.showTooltip = false;
   }
 
@@ -85,18 +102,20 @@ export class ServerListComponent implements OnInit, OnDestroy {
       const buttonCenterY = buttonRect.top + (buttonRect.height / 2);
       
       // Position tooltip with proper offset from the button
-      tooltipEl.style.left = `${buttonRect.right + 8}px`; // 8px gap from button right edge
+      tooltipEl.style.left = `${buttonRect.right + 12}px`; // 12px gap from button right edge
       tooltipEl.style.top = `${buttonCenterY}px`;
       
       // Ensure tooltip doesn't go off-screen
-      const tooltipRect = tooltipEl.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      
-      if (buttonCenterY + (tooltipRect.height / 2) > viewportHeight) {
-        tooltipEl.style.top = `${viewportHeight - tooltipRect.height - 10}px`;
-      } else if (buttonCenterY - (tooltipRect.height / 2) < 10) {
-        tooltipEl.style.top = `10px`;
-      }
+      setTimeout(() => {
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        
+        if (buttonCenterY + (tooltipRect.height / 2) > viewportHeight - 10) {
+          tooltipEl.style.top = `${viewportHeight - tooltipRect.height - 10}px`;
+        } else if (buttonCenterY - (tooltipRect.height / 2) < 10) {
+          tooltipEl.style.top = `10px`;
+        }
+      }, 0);
     }
   }
 

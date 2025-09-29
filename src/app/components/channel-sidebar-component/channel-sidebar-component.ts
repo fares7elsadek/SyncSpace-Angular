@@ -1,5 +1,5 @@
 import { Component, EventEmitter, OnDestroy, OnInit, Output, signal, WritableSignal, ɵclearResolutionOfComponentResourcesQueue } from '@angular/core';
-import { ChannelDto, CreateChannelRequest, ServerDto, UserDto } from '../../models/api.model';
+import { ChannelDto, CreateChannelRequest, ServerDto, ServerMember, UserDto } from '../../models/api.model';
 import {  Subject, takeUntil } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UserAreaComponent } from '../user-area-component/user-area-component';
 import { NewMemberEvent } from '../../services/new-member-event';
+import { DeleteServerEvent } from '../../services/delete-server-event';
 
 
 
@@ -32,6 +33,7 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
   showDeleteModal = signal(false);
   deleteConfirmation = '';
   isAddingMember = signal(false);
+  serverMember: WritableSignal<ServerMember | null> = signal(null);
 
 
   private destroy$ = new Subject<void>();
@@ -46,7 +48,8 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
   
   constructor(private apiService: ApiService,
     private router:Router,private activatedRoute:ActivatedRoute
-    ,private tostr:ToastrService,private newMemberEvent:NewMemberEvent){}
+    ,private tostr:ToastrService,private newMemberEvent:NewMemberEvent,
+      private deleteSeverEvent:DeleteServerEvent){}
 
   ngOnInit() {
   this.activatedRoute.paramMap
@@ -59,10 +62,12 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
       }
 
       this.serverId = id;
-      this.newChannel.serverId = id; // <-- IMPORTANT: update the request object too
+      this.newChannel.serverId = id; 
 
+      
       this.loadServerInfo();
       this.loadChannels();
+      this.loadServerMemberInfo();
     });
   }
 
@@ -70,6 +75,20 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  loadServerMemberInfo(){
+    if(!this.serverId.trim())return;
+    this.apiService.getServerMember(this.serverId)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe((response)=>{
+      this.serverMember.set(response.data);
+      console.log(response.data)
+    })
+  }
+
+  isAdmin(): boolean{
+    return this.serverMember()?.role === 'OWNER' || this.serverMember()?.role === 'ADMIN';
   }
 
 
@@ -232,7 +251,19 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
   }
 
   deleteServer() { 
-
+    if(!this.serverId.trim())return;
+    this.apiService.deleteServer(this.serverId)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next:(response)=>{
+        this.tostr.success("Server deleted successfully");
+        this.router.navigate(['/app/friends/all'])
+        this.deleteSeverEvent.notifyDeleteServer();
+      },
+      error:(err)=>{
+        this.tostr.error(err.error.error);
+      }
+    })
   }
 
 

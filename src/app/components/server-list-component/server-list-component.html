@@ -86,15 +86,16 @@
     <div class="h-0.5 bg-discord-gray rounded"></div>
   </div>
 
-  <!-- Server Icons with Custom Scrollbar -->
-  <div class="flex-1 min-h-0">
-    <div class="server-scroll-area px-3" (mouseleave)="hideServerTooltip()">
+  <!-- Server Icons with Custom Scrollbar (Flexible area) -->
+  <div class="flex-1 min-h-0 px-3">
+    <div class="server-scroll-area">
       <div class="space-y-2">
         <div class="relative" *ngFor="let server of servers(); trackBy: trackByServerId; let i = index">
           <button
             [routerLink]="'/app/server/' + server.id"
-            class="group w-12 h-12 bg-discord-green rounded-3xl hover:rounded-xl flex items-center justify-center transition-all duration-200 relative text-white font-bold text-lg"
-            (mouseenter)="showServerTooltip($event, server.name, i)"
+            class="group w-12 h-12 rounded-3xl hover:rounded-xl flex items-center justify-center transition-all duration-200 relative text-white font-bold text-lg server-button"
+            (mouseenter)="showServerTooltip($event, server.name)"
+            (mouseleave)="hideServerTooltip()"
           >
             <img
               *ngIf="server.iconUrl; else fallback"
@@ -105,11 +106,6 @@
             <ng-template #fallback>
               <span class="text-white font-bold text-lg">{{ server.name[0] }}</span>
             </ng-template>
-
-            <!-- Hidden tooltip (for fallback) -->
-            <div class="server-tooltip">
-              {{ server.name }}
-            </div>
           </button>
 
           <!-- Active indicator -->
@@ -118,24 +114,26 @@
             class="absolute left-0 w-1 h-6 bg-white rounded-r -translate-x-1 top-3"
           ></div>
         </div>
-
-        <!-- Add Server Button -->
-        <button 
-          (click)="modal.openCreateServerModal()"
-          class="w-12 h-12 bg-discord-light hover:bg-discord-green rounded-3xl hover:rounded-xl flex items-center justify-center transition-all duration-200 group relative"
-        >
-          <svg class="w-6 h-6 text-discord-green group-hover:text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-          </svg>
-          <div class="add-server-tooltip">
-            Add a Server
-          </div>
-        </button>
       </div>
     </div>
   </div>
 
-  <!-- Tooltip Portal -->
+  <!-- Add Server Button (Fixed at bottom) -->
+  <div class="px-3 flex-shrink-0">
+    <button 
+      (click)="modal.openCreateServerModal()"
+      class="w-12 h-12 bg-discord-light hover:bg-discord-green rounded-3xl hover:rounded-xl flex items-center justify-center transition-all duration-200 group relative add-server-btn"
+    >
+      <svg class="w-6 h-6 text-discord-green group-hover:text-white" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+      </svg>
+      <div class="add-server-tooltip">
+        Add a Server
+      </div>
+    </button>
+  </div>
+
+  <!-- Single Tooltip Portal -->
   <div class="tooltip-portal" #tooltipPortal>
     <div 
       class="server-tooltip-portal" 

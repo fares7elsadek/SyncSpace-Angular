@@ -19,6 +19,7 @@ export interface ServerDto {
   iconUrl?: string;
   createdAt: string;
   updatedAt: string;
+  membersNumber: number
 }
 
 export interface ChannelDto {
@@ -41,14 +42,17 @@ export interface MessageDto {
 export interface FriendshipDto {
   id: string;
   user:UserDto
+  createdAt:string
 }
 
 export interface NotificationDto {
   id: string;
-  type: 'MESSAGE' | 'FRIEND_REQUEST' | 'SERVER_INVITE' | 'SYSTEM';
+  type: 'DIRECT_MESSAGE' | 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED' | 'SYSTEM' | "GROUP_MESSAGE";
   title: string;
   content: string;
   relatedEntityId: string;
+  createdAt:string
+  read:boolean
 }
 
 // WebSocket Models
