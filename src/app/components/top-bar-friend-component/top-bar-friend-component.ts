@@ -3,9 +3,11 @@ import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, finalize } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
-import { NotificationDto } from '../../models/api.model';
+import { NotificationDto, FriendshipDto } from '../../models/api.model';
+import { FriendAcceptedEvent } from '../../services/friend-accepted-event';
+import { NotificationIncomingEvent } from '../../services/notification-incoming-event';
 
 interface Notification {
   id: string;
@@ -17,6 +19,8 @@ interface Notification {
   avatar?: string;
   actionable?: boolean;
   relatedEntityId: string;
+  friendshipStatus?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  username?: string;
 }
 
 @Component({
@@ -31,23 +35,33 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
   showNotificationsModal = signal(false);
   isSendingRequest = signal(false);
   errorMessage = signal("");
+  isLoadingNotifications = signal(false);
+  hasMoreNotifications = signal(true);
+  isLoadingMore = signal(false);
   
   username: string = "";
   notifications = signal<Notification[]>([]);
   unreadCount = signal(0);
-  page = 1;
+  page = 0;
   size = 20;
+  totalElements = 0;
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private router: Router, 
     private apiService: ApiService, 
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private friendAcceptedEvent:FriendAcceptedEvent,
+    private notificationEvent:NotificationIncomingEvent
   ) {}
 
   ngOnInit(): void {
-    // this.loadNotifications();
+    this.loadNotifications(true);
+    this.notificationEvent.notification$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(() => this.loadNotifications(true))
+    
   }
 
   ngOnDestroy(): void {
@@ -67,7 +81,10 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
     this.errorMessage.set("");
     
     this.apiService.sendFriendRequest(this.username.trim())
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isSendingRequest.set(false))
+      )
       .subscribe({
         next: () => {
           this.toastr.success("Friend request sent successfully");
@@ -76,7 +93,6 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
         error: (err) => {
           const errorMsg = err?.error?.error || err?.message || 'An error occurred while sending the request';
           this.errorMessage.set(errorMsg);
-          this.isSendingRequest.set(false);
         }
       });
   }
@@ -89,21 +105,61 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
   }
 
   // Notification Methods
-  loadNotifications() {
-    if (this.page < 1 || this.size < 1) return;
+  loadNotifications(reset: boolean = false) {
+    if (this.isLoadingNotifications() || this.isLoadingMore()) return;
+    
+    if (reset) {
+      this.page = 0;
+      this.notifications.set([]);
+      this.hasMoreNotifications.set(true);
+      this.isLoadingNotifications.set(true);
+    } else {
+      this.isLoadingMore.set(true);
+    }
 
     this.apiService.getNotifications(this.page, this.size)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.isLoadingNotifications.set(false);
+          this.isLoadingMore.set(false);
+        })
+      )
       .subscribe({
         next: (response) => {
-          // Clear existing notifications when reloading
-          this.notifications.set([]);
+          console.log('Notifications response:', response);
           
           if (response?.data && Array.isArray(response.data)) {
-            response.data.forEach(ntf => {
-              this.processNotification(ntf);
+            const newNotifications: Notification[] = [];
+            
+            // Process only friendship-related notifications
+            const friendshipNotifications = response.data.filter(ntf => 
+              ntf.type === 'FRIEND_REQUEST' || ntf.type === 'FRIEND_ACCEPTED'
+            );
+            
+            // Process each notification
+            const processPromises = friendshipNotifications.map(ntf => 
+              this.processNotificationAsync(ntf)
+            );
+            
+            Promise.all(processPromises).then(processedNotifications => {
+              const validNotifications = processedNotifications.filter(n => n !== null) as Notification[];
+              
+              if (reset) {
+                this.notifications.set(validNotifications);
+              } else {
+                this.notifications.update(current => [...current, ...validNotifications]);
+              }
+              
+              // Update pagination info
+              this.totalElements = Number(response.message) || 0;
+              const totalPages = Math.ceil(this.totalElements / this.size);
+              this.hasMoreNotifications.set(this.page < totalPages - 1);
+              
+              this.updateUnreadCount();
             });
-            this.updateUnreadCount();
+          } else {
+            this.hasMoreNotifications.set(false);
           }
         },
         error: (err) => {
@@ -113,183 +169,113 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
       });
   }
 
-  private processNotification(ntf: NotificationDto) {
+  loadMoreNotifications() {
+    if (this.hasMoreNotifications() && !this.isLoadingMore()) {
+      this.page++;
+      this.loadNotifications(false);
+    }
+  }
+
+  private async processNotificationAsync(ntf: NotificationDto): Promise<Notification | null> {
+    try {
+      if (ntf.type === 'FRIEND_REQUEST' || ntf.type === 'FRIEND_ACCEPTED') {
+        return await this.handleFriendshipNotification(ntf);
+      }
+      return null;
+    } catch (error) {
+      console.error('Error processing notification:', error);
+      return this.createDefaultNotification(ntf);
+    }
+  }
+
+  private handleFriendshipNotification(ntf: NotificationDto): Promise<Notification | null> {
+    if (!ntf.relatedEntityId) {
+      console.warn('No related entity ID for friendship notification');
+      return Promise.resolve(this.createDefaultNotification(ntf));
+    }
+
+    return new Promise((resolve) => {
+      this.apiService.getFriend(ntf.relatedEntityId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            if (response?.data) {
+              const friendship: FriendshipDto = response.data;
+              const notification = this.createFriendshipNotification(ntf, friendship);
+              resolve(notification);
+            } else {
+              resolve(this.createDefaultNotification(ntf));
+            }
+          },
+          error: (err) => {
+            console.error('Error fetching friendship details:', err);
+            resolve(this.createDefaultNotification(ntf));
+          }
+        });
+    });
+  }
+
+  private createFriendshipNotification(ntf: NotificationDto, friendship: FriendshipDto): Notification {
+    const username = friendship.user?.username || 'Unknown User';
+    let title: string;
+    let message: string;
+    let actionable = false;
+
     switch (ntf.type) {
-      case "FRIEND_REQUEST":
-        this.handleFriendRequest(ntf);
+      case 'FRIEND_REQUEST':
+        if (friendship.friendShipStatus === 'PENDING') {
+          title = 'Friend Request';
+          message = `${username} wants to connect with you.`;
+          actionable = true;
+        } else if (friendship.friendShipStatus === 'ACCEPTED') {
+          title = 'Friend Request Accepted';
+          message = `You and ${username} are now friends!`;
+          actionable = false;
+        } else {
+          title = 'Friend Request';
+          message = `Friend request from ${username}.`;
+          actionable = false;
+        }
         break;
-      case "FRIEND_ACCEPTED":
-        this.handleFriendAccepted(ntf);
-        break;
-      case "GROUP_MESSAGE":
-      case "DIRECT_MESSAGE":
-        this.handleIncomingMessage(ntf);
+      case 'FRIEND_ACCEPTED':
+        title = 'Friend Request Accepted';
+        message = `${username} accepted your friend request. You are now friends!`;
+        actionable = false;
         break;
       default:
-        this.handleDefaultCase(ntf);
-    }
-  }
-
-  handleFriendRequest(ntf: NotificationDto) {
-    if (!ntf.relatedEntityId) {
-      console.warn('No related entity ID for friend request notification');
-      return;
+        title = 'Friendship Update';
+        message = `Update from ${username}`;
+        actionable = false;
     }
 
-    this.apiService.getFriend(ntf.relatedEntityId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response?.data) {
-            const request = response.data;
-            const { title, message } = this.getNotificationContent(ntf.type, request.user?.username || 'Unknown User');
-            const notification: Notification = {
-              id: ntf.id,
-              type: ntf.type,
-              title: title,
-              message: message,
-              timestamp: ntf.createdAt,
-              read: ntf.read,
-              avatar: request.user?.avatarUrl,
-              actionable: true,
-              relatedEntityId: request.id
-            };
-            this.addNotification(notification);
-          }
-        },
-        error: (err) => {
-          console.error('Error fetching friend request details:', err);
-          
-          this.handleDefaultCase(ntf);
-        }
-      });
-  }
-
-  handleFriendAccepted(ntf: NotificationDto) {
-    if (!ntf.relatedEntityId) {
-      console.warn('No related entity ID for friend accepted notification');
-      return;
-    }
-
-    this.apiService.getFriend(ntf.relatedEntityId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response?.data) {
-            const request = response.data;
-            const { title, message } = this.getNotificationContent(ntf.type, request.user?.username || 'Unknown User');
-            const notification: Notification = {
-              id: ntf.id,
-              type: ntf.type,
-              title: title,
-              message: message,
-              timestamp: ntf.createdAt,
-              read: ntf.read,
-              avatar: request.user?.avatarUrl,
-              actionable: false,
-              relatedEntityId: request.id
-            };
-            this.addNotification(notification);
-          }
-        },
-        error: (err) => {
-          console.error('Error fetching friend accepted details:', err);
-          this.handleDefaultCase(ntf);
-        }
-      });
-  }
-
-  handleIncomingMessage(ntf: NotificationDto) {
-    if (!ntf.relatedEntityId) {
-      console.warn('No related entity ID for message notification');
-      return;
-    }
-
-    this.apiService.getMessage(ntf.relatedEntityId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response?.data) {
-            const messageData = response.data;
-            const { title, message } = this.getNotificationContent(ntf.type, messageData.sender?.username || 'Unknown User');
-            const notification: Notification = {
-              id: ntf.id,
-              type: ntf.type,
-              title: title,
-              message: message,
-              timestamp: ntf.createdAt,
-              read: ntf.read,
-              avatar: messageData.sender?.avatarUrl,
-              actionable: true,
-              relatedEntityId: messageData.messageId 
-            };
-            this.addNotification(notification);
-          }
-        },
-        error: (err) => {
-          console.error('Error fetching message details:', err);
-          this.handleDefaultCase(ntf);
-        }
-      });
-  }
-
-  handleDefaultCase(ntf: NotificationDto) {
-    const { title, message } = this.getNotificationContent(ntf.type, 'System');
-    const notification: Notification = {
+    return {
       id: ntf.id,
       type: ntf.type,
-      title: title,
-      message: message,
+      title,
+      message,
+      timestamp: ntf.createdAt,
+      read: ntf.read,
+      avatar: friendship.user?.avatarUrl,
+      actionable,
+      relatedEntityId: friendship.id,
+      friendshipStatus: friendship.friendShipStatus,
+      username
+    };
+  }
+
+  private createDefaultNotification(ntf: NotificationDto): Notification {
+    return {
+      id: ntf.id,
+      type: ntf.type,
+      title: 'System Notification',
+      message: 'A notification was received.',
       timestamp: ntf.createdAt,
       read: ntf.read,
       actionable: false,
       relatedEntityId: ntf.relatedEntityId || ''
     };
-    this.addNotification(notification);
   }
 
-  private addNotification(notification: Notification) {
-    this.notifications.update(current => {
-      const exists = current.find(n => n.id === notification.id);
-      if (!exists) {
-        return [...current, notification];
-      }
-      return current;
-    });
-  }
-
-  
-
-  getNotificationContent(type: string, user: string): { title: string; message: string } {
-    switch (type) {
-      case "DIRECT_MESSAGE":
-        return {
-          title: `New Message`,
-          message: `${user} sent you a new message.`,
-        };
-      case "GROUP_MESSAGE":
-        return {
-          title: `New Group Message`,
-          message: `${user} posted in the group.`,
-        };
-      case "FRIEND_REQUEST":
-        return {
-          title: `Friend Request`,
-          message: `${user} wants to connect with you.`,
-        };
-      case "FRIEND_ACCEPTED":
-        return {
-          title: `Friend Request Accepted`,
-          message: `${user} accepted your friend request.`,
-        };
-      case "SYSTEM":
-      default:
-        return {
-          title: `System Notification`,
-          message: user === 'System' ? "System message" : `Notification from ${user}`,
-        };
-    }
-  }
 
   updateUnreadCount() {
     const unread = this.notifications().filter(n => !n.read).length;
@@ -297,98 +283,151 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
   }
 
   markAsRead(notificationId: string) {
+    // Optimistically update UI
+    this.notifications.update(current => 
+      current.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      )
+    );
+    this.updateUnreadCount();
+
+    // Update on server
     this.apiService.markNotificationAsRead(notificationId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => {
-          // Update local state
+        error: (err) => {
+          console.error('Error marking notification as read:', err);
+          // Revert optimistic update on error
           this.notifications.update(current => 
             current.map(n => 
-              n.id === notificationId ? { ...n, read: true } : n
+              n.id === notificationId ? { ...n, read: false } : n
             )
           );
           this.updateUnreadCount();
-        },
-        error: (err) => {
-          console.error('Error marking notification as read:', err);
           this.toastr.error('Failed to mark notification as read');
         }
       });
   }
 
   markAllAsRead() {
+    // Get all unread notification IDs
+    const unreadIds = this.notifications().filter(n => !n.read).map(n => n.id);
+    
+    if (unreadIds.length === 0) return;
+
+    // Optimistically update UI
+    this.notifications.update(current => 
+      current.map(n => ({ ...n, read: true }))
+    );
+    this.updateUnreadCount();
+
+    // Update on server
     this.apiService.markAllNotificationsAsRead()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          // Update local state
-          this.notifications.update(current => 
-            current.map(n => ({ ...n, read: true }))
-          );
-          this.updateUnreadCount();
           this.toastr.success('All notifications marked as read');
         },
         error: (err) => {
           console.error('Error marking all notifications as read:', err);
+          // Revert optimistic update on error
+          this.notifications.update(current => 
+            current.map(n => 
+              unreadIds.includes(n.id) ? { ...n, read: false } : n
+            )
+          );
+          this.updateUnreadCount();
           this.toastr.error('Failed to mark all notifications as read');
         }
       });
   }
 
   deleteNotification(notificationId: string) {
+    // Optimistically remove from UI
+    const notificationToDelete = this.notifications().find(n => n.id === notificationId);
+    this.notifications.update(current => 
+      current.filter(n => n.id !== notificationId)
+    );
+    this.updateUnreadCount();
+
+    // Delete on server
     this.apiService.deleteNotification(notificationId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.notifications.update(current => 
-            current.filter(n => n.id !== notificationId)
-          );
-          this.updateUnreadCount();
           this.toastr.success("Notification deleted successfully");
         },
         error: (err) => {
           console.error('Error deleting notification:', err);
+          // Revert optimistic update on error
+          if (notificationToDelete) {
+            this.notifications.update(current => [...current, notificationToDelete]);
+            this.updateUnreadCount();
+          }
           this.toastr.error('Failed to delete notification');
         }
       });
   }
 
-  acceptFriendRequest(entityId: string) {
+  acceptFriendRequest(entityId: string, notificationId: string) {
     if (!entityId) {
       this.toastr.error('Invalid friend request');
       return;
     }
+
+    // Optimistically update the notification
+    this.notifications.update(current => 
+      current.map(n => 
+        n.id === notificationId 
+          ? { ...n, actionable: false, message: `You and ${n.username} are now friends!`, read: true }
+          : n
+      )
+    );
+    this.updateUnreadCount();
 
     this.apiService.acceptFriendRequest(entityId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
           this.toastr.success("Friend request accepted successfully");
-          this.loadNotifications();
+          // Mark the notification as read on server
+          this.apiService.markNotificationAsRead(notificationId)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe();
+          this.friendAcceptedEvent.notifyAcceptedEvent();
         },
         error: (err) => {
           console.error('Error accepting friend request:', err);
           this.toastr.error('Failed to accept friend request');
+          // Revert optimistic update
+          this.loadNotifications(true);
         }
       });
   }
 
-  rejectFriendRequest(entityId: string) {
+  rejectFriendRequest(entityId: string, notificationId: string) {
     if (!entityId) {
       this.toastr.error('Invalid friend request');
       return;
     }
 
+    // Remove the notification optimistically
+    this.notifications.update(current => 
+      current.filter(n => n.id !== notificationId)
+    );
+    this.updateUnreadCount();
+
     this.apiService.rejectFriendRequest(entityId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.toastr.success("Friend request rejected successfully");
-          this.loadNotifications();
+          this.toastr.success("Friend request rejected");
         },
         error: (err) => {
           console.error('Error rejecting friend request:', err);
           this.toastr.error('Failed to reject friend request');
+          // Reload notifications on error
+          this.loadNotifications(true);
         }
       });
   }
@@ -400,13 +439,14 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
   toggleNotificationsModal() {
     this.showNotificationsModal.set(!this.showNotificationsModal());
     if (this.showNotificationsModal()) {
-      this.loadNotifications();
+      this.loadNotifications(true);
     }
   }
 
   getNotificationIcon(type: string): string {
     switch (type) {
       case 'FRIEND_REQUEST':
+      case 'FRIEND_ACCEPTED':
         return 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z';
       case 'GROUP_MESSAGE':
       case 'DIRECT_MESSAGE':
@@ -416,10 +456,22 @@ export class TopBarFriendComponent implements OnInit, OnDestroy {
     }
   }
 
- 
   clearAllNotifications() {
+    if (this.notifications().length === 0) return;
+
+    // Store current notifications for potential revert
+    const currentNotifications = this.notifications();
+    
+    // Optimistically clear UI
     this.notifications.set([]);
     this.updateUnreadCount();
+    
+    // Note: You might want to implement a clearAllNotifications API endpoint
+    // For now, we'll just clear locally
     this.toastr.success('All notifications cleared');
+  }
+
+  refreshNotifications() {
+    this.loadNotifications(true);
   }
 }

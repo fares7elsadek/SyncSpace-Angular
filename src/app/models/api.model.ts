@@ -42,7 +42,8 @@ export interface MessageDto {
 export interface FriendshipDto {
   id: string;
   user:UserDto
-  createdAt:string
+  createdAt:string,
+  friendShipStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED'
 }
 
 export interface NotificationDto {

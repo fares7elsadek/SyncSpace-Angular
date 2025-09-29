@@ -51,7 +51,7 @@ interface ChatState {
 
 @Component({
   selector: 'app-dmchat-component',
-  imports: [FriendsSideBarComponent, MessageComposer, UserPanelComponent, CommonModule, FormsModule],
+  imports: [FriendsSideBarComponent, MessageComposer, CommonModule, FormsModule],
   templateUrl: './dmchat-component.html',
   styleUrl: './dmchat-component.css'
 })
