@@ -9,6 +9,7 @@ import { MainComponent } from './components/main-component/main-component';
 import { DMChatComponent } from './components/dmchat-component/dmchat-component';
 import { ChannelChatMessagesComponent } from './components/channel-chat-messages-component/channel-chat-messages-component';
 import { InviteServerComponent } from './components/invite-server-component/invite-server-component';
+import { RoomChannelComponent } from './components/room-channel-component/room-channel-component';
 
 
 
@@ -55,6 +56,10 @@ export const routes: Routes = [
                         path:"channel/:channelId",
                         component:ChannelChatMessagesComponent
                     },
+                    {
+                        path:"channel/room/:roomId",
+                        component:RoomChannelComponent
+                    }
                 ]
             },
             {

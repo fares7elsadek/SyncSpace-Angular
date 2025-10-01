@@ -31,6 +31,7 @@
     "@angular/material": "^20.2.4",
     "@angular/platform-browser": "^20.2.0",
     "@angular/router": "^20.2.0",
+    "@angular/youtube-player": "^20.2.5",
     "@stomp/stompjs": "^7.2.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/sockjs-client": "^1.5.4",

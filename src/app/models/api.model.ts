@@ -153,3 +153,20 @@ export interface ServerMember{
   nickname:string,
   serverUserDto:UserDto
 }
+
+export interface RoomState {
+  channelId: string;
+  videoUrl: string;
+  currentTimestamp: number;
+  isPlaying: boolean;
+  lastUpdatedAt: string;
+  playbackRate: number;
+}
+
+export interface VideoControlEvent {
+  channelId: string;
+  action: 'PLAY' | 'PAUSE' | 'SEEK' | 'CHANGE_VIDEO';
+  timestamp?: number;
+  videoUrl?: string;
+  userId: string;
+}
