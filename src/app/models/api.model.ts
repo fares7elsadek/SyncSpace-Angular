@@ -28,6 +28,7 @@ export interface ChannelDto {
   description?: string;
   isPrivate:boolean;
   isGroup:boolean;
+  type: "TEXT" | "STREAMING"
 }
 
 export interface MessageDto {
@@ -88,6 +89,7 @@ export interface CreateChannelRequest {
   description?: string;
   isPrivate: boolean;
   serverId: string;
+  type: "TEXT" | "STREAMING"
 }
 
 export interface SendMessageRequest {
@@ -155,12 +157,14 @@ export interface ServerMember{
 }
 
 export interface RoomState {
-  channelId: string;
+  roomId: string;
   videoUrl: string;
   currentTimestamp: number;
   isPlaying: boolean;
   lastUpdatedAt: string;
   playbackRate: number;
+  channel?:ChannelDto;
+  hoster?:UserDto
 }
 
 export interface VideoControlEvent {
@@ -168,5 +172,5 @@ export interface VideoControlEvent {
   action: 'PLAY' | 'PAUSE' | 'SEEK' | 'CHANGE_VIDEO';
   timestamp?: number;
   videoUrl?: string;
-  userId: string;
+  user: UserDto;
 }

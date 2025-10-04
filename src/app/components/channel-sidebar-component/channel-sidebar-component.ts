@@ -1,4 +1,4 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output, signal, WritableSignal, ɵclearResolutionOfComponentResourcesQueue } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, OnInit, Output, signal, WritableSignal, computed } from '@angular/core';
 import { ChannelDto, CreateChannelRequest, ServerDto, ServerMember, UserDto } from '../../models/api.model';
 import {  Subject, takeUntil } from 'rxjs';
 import { ApiService } from '../../services/api.service';
@@ -34,7 +34,11 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
   deleteConfirmation = '';
   isAddingMember = signal(false);
   serverMember: WritableSignal<ServerMember | null> = signal(null);
+  channelTypeToCreate: 'TEXT' | 'STREAMING' = 'TEXT';
 
+  // Computed signals to filter channels by type
+  textChannels = computed(() => this.channels().filter(c => c.type === 'TEXT'));
+  streamingChannels = computed(() => this.channels().filter(c => c.type === 'STREAMING'));
 
   private destroy$ = new Subject<void>();
   serverId = "";
@@ -43,7 +47,8 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
     name: "",
     description: "",
     isPrivate: false,
-    serverId: this.serverId
+    serverId: this.serverId,
+    type: "TEXT"
   }
   
   constructor(private apiService: ApiService,
@@ -52,23 +57,23 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
       private deleteSeverEvent:DeleteServerEvent){}
 
   ngOnInit() {
-  this.activatedRoute.paramMap
-    .pipe(takeUntil(this.destroy$))
-    .subscribe((params) => {
-      const id = params.get('serverId');
-      if (!id) {
-        console.warn('No serverId found in route');
-        return;
-      }
+    this.activatedRoute.paramMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => {
+        const id = params.get('serverId');
+        if (!id) {
+          console.warn('No serverId found in route');
+          return;
+        }
 
-      this.serverId = id;
-      this.newChannel.serverId = id; 
+        this.serverId = id;
+        this.newChannel.serverId = id; 
 
-      
-      this.loadServerInfo();
-      this.loadChannels();
-      this.loadServerMemberInfo();
-    });
+        
+        this.loadServerInfo();
+        this.loadChannels();
+        this.loadServerMemberInfo();
+      });
   }
 
 
@@ -99,6 +104,7 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
     .subscribe({
       next:(response)=>{
         this.channels.set(response.data);
+        console.log(response.data)
       },
       error:(err)=>{
         this.tostr.error(err.error.error);
@@ -118,6 +124,12 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
         this.tostr.error(err.error.error);
       }
     })
+  }
+
+  openCreateChannelModal(type: 'TEXT' | 'STREAMING') {
+    this.channelTypeToCreate = type;
+    this.newChannel.type = type;
+    this.showCreateChannelModal.set(true);
   }
 
   createChannel(){
@@ -150,7 +162,8 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
       name: "",
       description: "",
       isPrivate: false,
-      serverId: this.serverId
+      serverId: this.serverId,
+      type: this.channelTypeToCreate
     }; 
     this.errorMessage.set("");
   }
@@ -265,6 +278,4 @@ export class ChannelSidebarComponent implements OnInit,OnDestroy {
       }
     })
   }
-
-
 }

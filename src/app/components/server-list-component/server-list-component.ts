@@ -1,8 +1,8 @@
 import { Component, ElementRef, OnDestroy, OnInit, signal, ViewChild, WritableSignal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { ServerDto} from '../../models/api.model';
 import { ApiService } from '../../services/api.service';
-import { Subject, takeUntil } from 'rxjs';
+import { filter, Subject, takeUntil } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ModalService } from '../../services/modal-service';
@@ -22,6 +22,8 @@ export class ServerListComponent implements OnInit, OnDestroy {
   @ViewChild('tooltipPortal', { static: false }) tooltipPortal!: ElementRef<HTMLDivElement>;
   showTooltip = false;
   tooltipText = '';
+  activeServerId = signal<string | null>(null);
+
   
   private destroy$ = new Subject<void>();
   private tooltipTimeout?: number;
@@ -32,7 +34,18 @@ export class ServerListComponent implements OnInit, OnDestroy {
     public modal: ModalService,
     private serverEvent: ServerEventsService,
     private deletServerEvent:DeleteServerEvent
-  ) {}
+  ) {
+    // Initialize active server ID on construction
+    this.updateActiveServerId();
+    
+    // Subscribe to router events to update active server
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.updateActiveServerId();
+    });
+  }
 
   ngOnInit(): void {
     this.loadServers();
@@ -54,6 +67,12 @@ export class ServerListComponent implements OnInit, OnDestroy {
     }
   }
 
+  private updateActiveServerId(): void {
+    // Extract server ID from URL: /app/server/{serverId}/...
+    const match = this.router.url.match(/\/app\/server\/([^\/]+)/);
+    this.activeServerId.set(match ? match[1] : null);
+  }
+
   loadServers(): void {
     this.apiService.getServers()
       .pipe(takeUntil(this.destroy$))
@@ -68,7 +87,6 @@ export class ServerListComponent implements OnInit, OnDestroy {
   }
 
   showServerTooltip(event: MouseEvent, serverName: string) {
-    // Clear any existing timeout
     if (this.tooltipTimeout) {
       clearTimeout(this.tooltipTimeout);
     }
@@ -76,23 +94,19 @@ export class ServerListComponent implements OnInit, OnDestroy {
     const button = event.currentTarget as HTMLButtonElement;
     const buttonRect = button.getBoundingClientRect();
     
-    // Set text and position immediately (Discord-like instant show)
     this.tooltipText = serverName;
     this.updateTooltipPosition(buttonRect);
     
-    // Show tooltip instantly with a tiny delay to ensure positioning is applied
     this.tooltipTimeout = setTimeout(() => {
       this.showTooltip = true;
-    }, 50); // Very small delay, just enough for positioning
+    }, 50);
   }
 
   hideServerTooltip() {
-    // Clear any pending show timeout
     if (this.tooltipTimeout) {
       clearTimeout(this.tooltipTimeout);
     }
     
-    // Hide instantly (Discord behavior)
     this.showTooltip = false;
   }
 
@@ -101,11 +115,9 @@ export class ServerListComponent implements OnInit, OnDestroy {
       const tooltipEl = this.serverTooltip.nativeElement;
       const buttonCenterY = buttonRect.top + (buttonRect.height / 2);
       
-      // Position tooltip with proper offset from the button
-      tooltipEl.style.left = `${buttonRect.right + 12}px`; // 12px gap from button right edge
+      tooltipEl.style.left = `${buttonRect.right + 12}px`;
       tooltipEl.style.top = `${buttonCenterY}px`;
       
-      // Ensure tooltip doesn't go off-screen
       setTimeout(() => {
         const tooltipRect = tooltipEl.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
@@ -119,11 +131,6 @@ export class ServerListComponent implements OnInit, OnDestroy {
     }
   }
 
-  isActive(route: string): boolean {
-    return this.router.url.startsWith(route);
-  }
-
-  // TrackBy function for better performance with *ngFor
   trackByServerId(index: number, server: ServerDto): string | number {
     return server.id;
   }

@@ -312,3 +312,12 @@ button:focus-visible {
 .animate-fadeIn {
   animation: fadeIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
+
+/* Active server gets rounded corners */
+.server-button.active-server {
+  border-radius: 16px !important;
+}
+
+.server-button.active-server img {
+  border-radius: 16px !important;
+}

@@ -13,12 +13,14 @@ import {
   MessageDto, 
   NotificationDto, 
   PaginatedMessage, 
+  RoomState, 
   SendMessageRequest, 
   ServerDto, 
   ServerMember, 
   UpdateUserProfileRequest, 
   UserChat, 
-  UserDto 
+  UserDto, 
+  VideoControlEvent
 } from '../models/api.model';
 
 @Injectable({
@@ -106,6 +108,21 @@ export class ApiService {
 
   getUserChats(): Observable<ApiResponse<UserChat[]>> {
     return this._httpClient.get<ApiResponse<UserChat[]>>(`${this.baseUrl}/channels/user/chats`);
+  }
+
+  fetchRoomState(roomId: string): Observable<ApiResponse<RoomState>> {
+      return this._httpClient.get<ApiResponse<RoomState>>(`${this.baseUrl}/channels/room/${roomId}`);
+  }
+
+  sendControlEvent(event: any): Observable<ApiResponse<void>> {      
+      return this._httpClient.post<ApiResponse<void>>(
+        `${this.baseUrl}/channels/room/control`,
+        event
+      );
+  }
+
+  resetRoomState(roomId: string): Observable<ApiResponse<void>> {
+      return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/channels/room/${roomId}/reset`,{});
   }
 
   
