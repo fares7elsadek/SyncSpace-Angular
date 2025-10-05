@@ -35,6 +35,7 @@ export class WebsocketService {
 
   private privateMessageStream = new Subject<MessageDto>();
   private privateDeletionStream = new Subject<MessageDeletedEvent>();
+  private activityNotifyStream = new Subject<string>();
 
   private notificationsStream = new Subject<NotificationDto>();
   private generalMessages = new Subject<void>();
@@ -48,6 +49,8 @@ export class WebsocketService {
   private roomSyncStreams = new Map<string, Subject<SyncCheckEvent>>();
   private roomSubscriptions = new Map<string, StompSubscription[]>();
   private roomResetStream = new Map<string, Subject<string>>();
+  private roomConnectStream= new Map<string, Subject<string>>();
+  private roomDisconnetStream= new Map<string, Subject<string>>();
 
   // === Public observables ===
   public connected$ = this.connectionStatus.asObservable();
@@ -56,6 +59,7 @@ export class WebsocketService {
   public notifications$ = this.notificationsStream.asObservable();
   public userPresence$ = this.userPresenceStream.asObservable();
   public generalMessages$ = this.generalMessages.asObservable();
+  public activity$ = this.activityNotifyStream.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -123,6 +127,10 @@ export class WebsocketService {
       this.generalMessages.next();
     });
 
+    this.stompClient.subscribe(`/topic/user/${currentUser.id}/activity/notify`, (message: IMessage) => {
+      this.activityNotifyStream.next(message.body);
+    });
+
     this.stompClient.subscribe('/queue/private/deletions', (message: IMessage) => {
       const deletedEvent: MessageDeletedEvent = JSON.parse(message.body);
       this.privateDeletionStream.next(deletedEvent);
@@ -187,45 +195,51 @@ export class WebsocketService {
 
   // === Room/Video subscriptions ===
   subscribeToRoom(roomId: string): void {
-    if (!this.stompClient?.connected) {
-      console.error('Cannot subscribe to room: WebSocket not connected');
-      return;
-    }
-    
-    if (this.roomSubscriptions.has(roomId)) {
-      console.log('Already subscribed to room:', roomId);
-      return;
-    }
+  if (!this.stompClient?.connected) {
+    console.error('Cannot subscribe to room: WebSocket not connected');
+    return;
+  }
 
-    console.log('Subscribing to room:', roomId);
+  console.log('Subscribing to room:', roomId);
 
+  // Get existing subs or create new array
+  const subs: StompSubscription[] = this.roomSubscriptions.get(roomId) || [];
+
+  // Only create streams if they don't exist
+  if (!this.roomControlStreams.has(roomId)) {
     this.roomControlStreams.set(roomId, new Subject<VideoControlEvent>());
+  }
+  if (!this.roomSyncStreams.has(roomId)) {
     this.roomSyncStreams.set(roomId, new Subject<SyncCheckEvent>());
+  }
+  if (!this.roomResetStream.has(roomId)) {
+    this.roomResetStream.set(roomId, new Subject<string>());
+  }
 
-    const subs: StompSubscription[] = [];
-
-    // Subscribe to video control events
+  // Check if already subscribed to these specific topics
+  const hasControlSub = subs.some(s => s.id?.includes('/topic/room/'));
+  
+  if (!hasControlSub) {
     subs.push(this.stompClient.subscribe(`/topic/room/${roomId}`, (msg: IMessage) => {
       const event: VideoControlEvent = JSON.parse(msg.body);
       console.log('Received room control event:', event);
       this.roomControlStreams.get(roomId)!.next(event);
     }));
 
-    // Subscribe to sync check events from server
     subs.push(this.stompClient.subscribe(`/topic/room/${roomId}/sync`, (msg: IMessage) => {
       const syncEvent: SyncCheckEvent = JSON.parse(msg.body);
       console.log('Received sync check event:', syncEvent);
       this.roomSyncStreams.get(roomId)!.next(syncEvent);
     }));
 
-    // reset room
     subs.push(this.stompClient.subscribe(`/topic/room/${roomId}/reset`, (msg: IMessage) => {
       this.roomResetStream.get(roomId)!.next("reset");
     }));
-
-    this.roomSubscriptions.set(roomId, subs);
-    console.log('Successfully subscribed to room:', roomId);
   }
+
+  this.roomSubscriptions.set(roomId, subs);
+  console.log('Successfully subscribed to room:', roomId);
+}
 
   unsubscribeFromRoom(roomId: string): void {
     console.log('Unsubscribing from room:', roomId);
@@ -255,6 +269,55 @@ export class WebsocketService {
       body: JSON.stringify({ event })
     });
   }
+
+  supscribeToRoomViewersState(roomId: string) {
+  if (!this.stompClient?.connected) {
+    console.error('WebSocket not connected');
+    return;
+  }
+
+  if (!this.roomConnectStream.has(roomId)) {
+    this.roomConnectStream.set(roomId, new Subject<string>());
+  }
+  if (!this.roomDisconnetStream.has(roomId)) {
+    this.roomDisconnetStream.set(roomId, new Subject<string>());
+  }
+
+  const subs: StompSubscription[] = this.roomSubscriptions.get(roomId) || [];
+
+  const connectSub = this.stompClient.subscribe(
+    `/topic/room/${roomId}/connect`,
+    (msg: IMessage) => {
+      console.log('Received connect event:', msg.body);
+      // Don't parse - it's already a string (user ID)
+      this.roomConnectStream.get(roomId)!.next(msg.body);
+    }
+  );
+  subs.push(connectSub);
+
+  const disconnectSub = this.stompClient.subscribe(
+    `/topic/room/${roomId}/disconnect`,
+    (msg: IMessage) => {
+      console.log('Received disconnect event:', msg.body);
+      // Don't parse - it's already a string (user ID)
+      this.roomDisconnetStream.get(roomId)!.next(msg.body);
+    }
+  );
+  subs.push(disconnectSub);
+
+  this.roomSubscriptions.set(roomId, subs);
+}
+  
+
+  getRoomConnectEvents(roomId: string): Observable<string> {
+    return this.ensureStream(this.roomConnectStream, roomId);
+  }
+
+  getRoomDisconnectEvents(roomId: string): Observable<string> {
+    return this.ensureStream(this.roomDisconnetStream, roomId);
+  }
+
+
 
   // === Server presence ===
   subscribeToServerPresence(serverId: string): void {

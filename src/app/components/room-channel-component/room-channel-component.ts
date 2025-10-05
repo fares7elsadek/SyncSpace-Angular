@@ -2,13 +2,14 @@ import { Component, ElementRef, ViewChild, signal, effect, OnInit, OnDestroy, Wr
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { YouTubePlayerModule, YouTubePlayer } from '@angular/youtube-player';
-import { RoomState, UserDto, VideoControlEvent } from '../../models/api.model';
+import { ApiResponse, RoomState, UserDto, VideoControlEvent } from '../../models/api.model';
 import { ActivatedRoute } from '@angular/router';
-import { BehaviorSubject, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, Subject, switchMap, take, takeUntil } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { ToastrService } from 'ngx-toastr';
 import { WebsocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
+import { HttpClient } from '@angular/common/http';
 
 interface Message {
   id: string;
@@ -39,7 +40,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   @ViewChild('chatContainer') chatContainer?: ElementRef<HTMLDivElement>;
   @ViewChild('videoUrlInput') videoUrlInput?: ElementRef<HTMLInputElement>;
 
-  // Signals
   currentVideoId = signal<string>('');
   videoTitle = signal<string>('');
   videoHost = signal<string>('Unknown');
@@ -54,7 +54,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private isConnected$ = new BehaviorSubject<boolean>(false);
   
-  // Player state management
   private playerReady = false;
   private playerReadyPromise?: Promise<void>;
   private playerReadyResolver?: () => void;
@@ -64,7 +63,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   private syncCheckInterval?: any;
   
   private readonly SYNC_THRESHOLD = 2.5;
-  private readonly SYNC_CHECK_INTERVAL = 15000; // 15 seconds
+  private readonly SYNC_CHECK_INTERVAL = 15000;
   
   private currentState: RoomState = {
     roomId: "",
@@ -75,10 +74,8 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     playbackRate: 1,
   };
   
-  
   private clientReceivedAt: number = 0;
 
-  // Form inputs
   videoUrl: string = '';
   messageText: string = '';
   channelId: string = '';
@@ -103,7 +100,8 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     private apiService: ApiService,
     private tostr: ToastrService,
     private websocketService: WebsocketService,
-    private authService:AuthService
+    private authService: AuthService,
+    private http: HttpClient
   ) {
     effect(() => {
       const msgs = this.messages();
@@ -113,49 +111,143 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     });
   }
 
-  
   ngOnInit(): void {
-    this.loadYouTubeApi();
-    this.loadCurrentUser();
+  this.loadYouTubeApi();
+  this.loadCurrentUser();
+  
+  this.route.paramMap
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(params => {
+      let roomId = params.get("roomId");
+      if (!roomId?.trim()) return;
+
+      if (this.channelId && this.channelId !== roomId) {
+        this.cleanupCurrentRoom();
+      }
+
+      this.channelId = roomId;
+      
+      // Wait for WebSocket to be connected before subscribing
+      this.websocketService.connected$
+        .pipe(
+          takeUntil(this.destroy$),
+          filter(connected => connected),
+          take(1) // Only take the first connected event
+        )
+        .subscribe(() => {
+          console.log('[Room] WebSocket connected, setting up viewer subscriptions');
+          
+          // Now subscribe to viewer state events
+          this.websocketService.supscribeToRoomViewersState(roomId);
+          
+          // Subscribe to connect/disconnect events
+          this.websocketService.getRoomConnectEvents(roomId)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => {
+              console.log('[Room] Connect event received, loading viewer count');
+              this.loadViewersCount();
+            });
+
+          this.websocketService.getRoomDisconnectEvents(roomId)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => {
+              console.log('[Room] Disconnect event received, loading viewer count');
+              this.loadViewersCount();
+            });
+        });
+      
+      // Connect to the room
+      this.connectToRoom(this.channelId);
+    });
+
+  this.loadInitialData();
+  this.startPeriodicSyncCheck();
+}
+
+  loadViewersCount(): void {
+    if (!this.channelId.trim()) return;
     
-    this.route.paramMap
+    this.apiService.getRoomViewers(this.channelId)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        let roomId = params.get("roomId");
-        if (!roomId?.trim()) return;
-
-        if (this.channelId && this.channelId !== roomId) {
-          console.log('[Room] Room changed, cleaning up previous room:', this.channelId);
-          this.cleanupCurrentRoom();
+      .subscribe({
+        next: (response: ApiResponse<any[]>) => {
+          const count = response.data.length;
+          this.viewerCount.set(count);
+        },
+        error: (error) => {
+          console.error('[Room] Error loading viewer count:', error);
         }
-
-        this.channelId = roomId;
-        this.connectToRoom(this.channelId);
       });
-
-    this.loadInitialData();
-    this.startPeriodicSyncCheck();
   }
 
-
-  private cleanupCurrentRoom(): void {
-    console.log('[Room] Cleaning up room:', this.channelId);
+  ngOnDestroy(): void {
+    const roomId = this.currentState.roomId || this.channelId;
     
-    // Clear intervals
     this.clearSyncCheckInterval();
     clearTimeout(this.seekDebounceTimeout);
     
-    // Stop video if host
     if (this.isHost() && this.hasActiveVideo()) {
       this.stopVideoOnLeave();
     }
     
-    // Stop viewing the current room
     if (this.channelId) {
       this.websocketService.stopViewing(this.channelId);
     }
     
-    // Reset all state
+    if (roomId) {
+      this.apiService.disconnectToRoom(roomId)
+        .pipe(take(1))
+        .subscribe({
+          next: (response) => {
+            console.log('[Room] Disconnected on destroy:', response.message);
+          },
+          error: (error) => {
+            console.error('[Room] Error disconnecting on destroy:', error);
+          }
+        });
+    }
+    
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private cleanupCurrentRoom(): void {
+    const roomId = this.channelId || this.currentState.roomId;
+    
+    if (roomId) {
+      if (confirm("Are you sure you want to leave?")) {
+        this.apiService.disconnectToRoom(roomId)
+          .pipe(take(1))
+          .subscribe({
+            next: (response) => {
+              this.tostr.success(response.message);
+              this.performCleanup();
+            },
+            error: (error) => {
+              console.error('[Room] Error disconnecting:', error);
+              this.tostr.error('Failed to disconnect properly');
+            }
+          });
+      } else {
+        return;
+      }
+    } else {
+      this.performCleanup();
+    }
+  }
+
+  private performCleanup(): void {
+    this.clearSyncCheckInterval();
+    clearTimeout(this.seekDebounceTimeout);
+    
+    if (this.isHost() && this.hasActiveVideo()) {
+      this.stopVideoOnLeave();
+    }
+    
+    if (this.channelId) {
+      this.websocketService.stopViewing(this.channelId);
+    }
+    
     this.resetVideoState();
     this.playerReady = false;
     this.playerReadyPromise = undefined;
@@ -165,28 +257,15 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     this.clientReceivedAt = 0;
     this.isConnected$.next(false);
     
-    // Reset signals
     this.isPlaying.set(false);
     this.isSyncing.set(false);
     this.isLoadingVideo.set(false);
     this.viewerCount.set(1);
     
-    // Clear messages
     this.messages.set({ channelId: '', messages: [] });
     
-    // Clear form inputs
     this.videoUrl = '';
     this.messageText = '';
-    
-    console.log('[Room] Cleanup complete');
-  }
-
-
-  ngOnDestroy(): void {
-    this.cleanupCurrentRoom();
-    
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   private loadCurrentUser(): void {
@@ -215,7 +294,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
       const drift = Math.abs(currentTime - expectedTime);
 
       if (drift > this.SYNC_THRESHOLD) {
-        console.log('[SyncCheck] Drift detected:', drift, 'seconds. Resyncing...');
         await this.synchronizePlayer(this.currentState);
       }
     } catch (error) {
@@ -224,36 +302,30 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   }
 
   connectToRoom(channelId: string): void {
-    console.log('[RoomService] ========== CONNECTING TO ROOM ==========');
-    console.log('[RoomService] Room ID:', channelId);
-    
     this.apiService.fetchRoomState(channelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          let data = response.data;
-          
-          
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap((stateResponse: ApiResponse<RoomState>) => {
+          let data = stateResponse.data;
           this.clientReceivedAt = Date.now();
-          
-          console.log('[RoomService] Room state received:', JSON.stringify(data));
-          console.log('[RoomService] Video URL:', data.videoUrl);
-          console.log('[RoomService] Current Timestamp:', data.currentTimestamp);
-          console.log('[RoomService] Is Playing:', data.isPlaying);
-          console.log('[RoomService] Client Received At:', new Date(this.clientReceivedAt).toISOString());
           
           this.currentState = data;
           
           if (data.videoUrl?.trim()) {
-            console.log('[RoomService] Applying video to late joiner...');
             this.applyToVideo(data);
           }
           
+          return this.apiService.connectToRoom(data.roomId);
+        })
+      )
+      .subscribe({
+        next: (connectResponse: ApiResponse<any>) => {
+          this.tostr.success(connectResponse.message);
           
-          this.subscribeToRoomUpdates(data.roomId);
+          this.subscribeToRoomUpdates(this.currentState.roomId);
           this.isConnected$.next(true);
           
-          this.websocketService.getRoomResetEvent(data.roomId)
+          this.websocketService.getRoomResetEvent(this.currentState.roomId)
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {
               if (this.localStop) {
@@ -262,30 +334,29 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
               }
               this.resetVideoState();
             });
+          
+          setTimeout(() => {
+            this.loadViewersCount();
+          }, 300);
         },
         error: (error) => {
-          console.error('[RoomService] Error fetching room state:', error);
+          console.error('[RoomService] Error connecting to room:', error);
           this.tostr.error('Failed to connect to room');
         }
       });
   }
 
   private subscribeToRoomUpdates(channelId: string): void {
-    console.log('[RoomService] Subscribing to WebSocket room updates');
     this.websocketService.subscribeToRoom(channelId);
 
     this.websocketService.getRoomControlEvents(channelId)
       .pipe(takeUntil(this.destroy$))
       .subscribe(event => {
-        console.log('[RoomService] Room control event received:', event);
         this.handleRemoteEvent(event);
       });
   }
 
   private async handleRemoteEvent(event: VideoControlEvent): Promise<void> {
-    console.log('[RoomService] Handling remote event:', event.action);
-    
-    
     this.clientReceivedAt = Date.now();
     
     const updatedState = { ...this.currentState };
@@ -331,27 +402,22 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
 
     const isNewVideo = this.currentVideoId() !== videoId;
     
-    
     this.currentState = state;
     
     if (isNewVideo) {
       this.isLoadingVideo.set(true);
       this.playerReady = false;
       this.currentVideoId.set(videoId);
-      this.videoTitle.set('Loading video...');
+      this.videoTitle.set(state.videoTitle!);
       this.videoHost.set(state.hoster?.username || 'Unknown');
       this.isVideoCollapsed.set(false);
-      this.fetchVideoDetails(videoId);
-      
       
       this.playerReadyPromise = new Promise(resolve => {
         this.playerReadyResolver = resolve;
       });
       
-      
       try {
         await this.playerReadyPromise;
-        console.log('[RoomService] Player ready, initial sync completed in onPlayerReady');
         this.isLoadingVideo.set(false);
       } catch (error) {
         console.error('[RoomService] Player ready timeout:', error);
@@ -359,14 +425,12 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
         return;
       }
     } else {
-      console.log('[RoomService] Synchronizing player with updated state:', state);
       await this.synchronizePlayer(state);
     }
   }
 
   private async synchronizePlayer(state: RoomState): Promise<void> {
     if (!this.playerReady || !this.youtubePlayer) {
-      console.log('[RoomService] Player not ready for sync');
       return;
     }
 
@@ -374,48 +438,33 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     
     try {
       const actualTimestamp = this.calculateCurrentTimestamp(state);
-      console.log('[RoomService] Calculated timestamp:', actualTimestamp);
 
-      // Get current player state
       const currentTime = await this.getCurrentTime();
       const playerState = await this.youtubePlayer.getPlayerState();
       const isCurrentlyPlaying = playerState === 1;
       const isBuffering = playerState === 3;
-      
-      console.log('[RoomService] Current time:', currentTime, 'Player state:', playerState);
 
-      // Don't sync if buffering
       if (isBuffering) {
-        console.log('[RoomService] Player is buffering, skipping sync');
         this.isSyncing.set(false);
         return;
       }
 
-      // Check drift and seek if necessary
       const drift = Math.abs(currentTime - actualTimestamp);
-      console.log('[RoomService] Drift:', drift);
 
       if (drift > this.SYNC_THRESHOLD) {
-        console.log('[RoomService] Seeking to correct drift');
         await this.seekTo(actualTimestamp);
-        // Wait a bit for seek to complete
         await this.sleep(500);
       }
 
-      // Sync play/pause state
       if (state.isPlaying && !isCurrentlyPlaying) {
-        console.log('[RoomService] Playing video');
         await this.playVideoElement();
       } else if (!state.isPlaying && isCurrentlyPlaying) {
-        console.log('[RoomService] Pausing video');
         await this.pauseVideoElement();
       }
 
-      // Sync playback rate
       if (state.playbackRate) {
         const currentRate = await this.getPlaybackRate();
         if (Math.abs(currentRate - state.playbackRate) > 0.01) {
-          console.log('[RoomService] Setting playback rate:', state.playbackRate);
           await this.setPlaybackRate(state.playbackRate);
         }
       }
@@ -426,7 +475,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
       console.error('[RoomService] Error synchronizing player:', error);
       this.isLoadingVideo.set(false);
     } finally {
-      // Add small delay before clearing syncing flag
       await this.sleep(1000);
       this.isSyncing.set(false);
     }
@@ -450,7 +498,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     if (this.youtubePlayer) {
       try {
         await this.youtubePlayer.seekTo(timestamp, true);
-        console.log('[RoomService] Seeked to:', timestamp);
       } catch (e) {
         console.error('[RoomService] Error seeking:', e);
       }
@@ -461,7 +508,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     if (this.youtubePlayer) {
       try {
         await this.youtubePlayer.playVideo();
-        console.log('[RoomService] Video playing');
       } catch (e) {
         console.error('[RoomService] Error playing video:', e);
       }
@@ -472,7 +518,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     if (this.youtubePlayer) {
       try {
         await this.youtubePlayer.pauseVideo();
-        console.log('[RoomService] Video paused');
       } catch (e) {
         console.error('[RoomService] Error pausing video:', e);
       }
@@ -483,7 +528,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     if (this.youtubePlayer) {
       try {
         await this.youtubePlayer.setPlaybackRate(rate);
-        console.log('[RoomService] Playback rate set to:', rate);
       } catch (e) {
         console.error('[RoomService] Error setting playback rate:', e);
       }
@@ -504,11 +548,9 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
       return state.currentTimestamp;
     }
 
-    
     const now = Date.now();
     const elapsedSeconds = (now - this.clientReceivedAt) / 1000;
     
-    // Sanity check
     if (elapsedSeconds < 0 || elapsedSeconds > 86400) {
       console.warn('[calculateTimestamp] Invalid elapsed time:', elapsedSeconds, 'seconds. Using base timestamp.');
       return state.currentTimestamp;
@@ -516,8 +558,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     
     const playbackRate = state.playbackRate || 1.0;
     const calculated = state.currentTimestamp + (elapsedSeconds * playbackRate);
-    
-    console.log('[calculateTimestamp] Base:', state.currentTimestamp, 'Elapsed:', elapsedSeconds.toFixed(3), 'Rate:', playbackRate, 'Result:', calculated.toFixed(3));
     
     return Math.max(0, calculated);
   }
@@ -602,7 +642,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.tostr.success(res.message);
           this.videoUrl = '';
-          
         },
         error: (error) => {
           console.error('[LoadVideo] Error:', error);
@@ -613,75 +652,64 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   }
 
   private fetchVideoDetails(videoId: string): void {
-    // In production, call YouTube Data API:
-    // https://www.googleapis.com/youtube/v3/videos?id={videoId}&key={API_KEY}&part=snippet
-    setTimeout(() => {
-      this.videoTitle.set('Awesome Video Title - Replace with real API call');
-    }, 500);
+    const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+
+    this.http.get(url, { responseType: 'text' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data: any) => {
+          try {
+            const parsed = JSON.parse(data);
+            this.videoTitle.set(parsed.title);
+          } catch {
+            this.videoTitle.set('Unknown Video');
+          }
+        },
+        error: (err) => {
+          console.error(err);
+          this.videoTitle.set('Unknown Video');
+        }
+      });
   }
 
   async onPlayerReady(event: any) {
-    console.log('[Player] YouTube Player Ready', event);
     this.playerReady = true;
     
-    
     const correctTimestamp = this.calculateCurrentTimestamp(this.currentState);
-    console.log('[Player] ========== INITIAL SYNC START ==========');
-    console.log('[Player] Current state on ready:', JSON.stringify(this.currentState));
-    console.log('[Player] Calculated timestamp:', correctTimestamp, 'Should be playing:', this.currentState.isPlaying);
     
-   
     if (this.currentState.videoUrl) {
-      console.log('[Player] Forcing sync to position:', correctTimestamp);
-      
       try {
-        
         await this.sleep(500);
         
-        
-        console.log('[Player] Force seeking to:', correctTimestamp);
         await this.youtubePlayer?.seekTo(correctTimestamp, true);
         await this.sleep(200);
         
-        
         let currentTime = await this.getCurrentTime();
-        console.log('[Player] Current time after first seek:', currentTime);
         
         if (Math.abs(currentTime - correctTimestamp) > 1) {
-          console.log('[Player] First seek failed, forcing again...');
           await this.youtubePlayer?.seekTo(correctTimestamp, true);
           await this.sleep(300);
           currentTime = await this.getCurrentTime();
-          console.log('[Player] Current time after second seek:', currentTime);
         }
         
-        
         if (this.currentState.isPlaying) {
-          console.log('[Player] Starting playback for late joiner');
           await this.playVideoElement();
-          
           
           await this.sleep(500);
           const finalTime = await this.getCurrentTime();
           const expectedTime = this.calculateCurrentTimestamp(this.currentState);
           const drift = Math.abs(finalTime - expectedTime);
-          console.log('[Player] Final time:', finalTime, 'Expected:', expectedTime, 'Drift:', drift);
           
           if (drift > 2) {
-            console.log('[Player] Large drift detected, final correction...');
             await this.youtubePlayer?.seekTo(expectedTime, true);
           }
         } else {
-          console.log('[Player] Keeping video paused at:', correctTimestamp);
           await this.pauseVideoElement();
         }
-        
-        console.log('[Player] ========== INITIAL SYNC COMPLETE ==========');
       } catch (error) {
         console.error('[Player] Error setting initial position:', error);
       }
     }
-    
     
     if (this.playerReadyResolver) {
       this.playerReadyResolver();
@@ -693,25 +721,21 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     const state = event.data;
     const isHost = this.isHost();
     
-    console.log('[Player] State change:', state, 'isHost:', isHost, 'isSyncing:', this.isSyncing());
-    
     this.isPlaying.set(state === 1);
 
-    
     if (this.isSyncing() || !isHost) {
-      console.log('[Player] Ignoring state change - isSyncing or not host');
       return;
     }
 
-    if (state === 0) { // Ended
-      if(this.isHost() && this.hasActiveVideo()){
+    if (state === 0) {
+      if (this.isHost() && this.hasActiveVideo()) {
         this.stopVideoOnLeave();
         this.addSystemMessage('Video ended');
         this.resetVideoState();
       }
-    } else if (state === 2) { 
+    } else if (state === 2) {
       this.handleUserPause();
-    } else if (state === 1) { 
+    } else if (state === 1) {
       this.handleUserPlay();
     }
   }
@@ -720,19 +744,19 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     const errorCode = event.data;
     let errorMessage = 'Video playback error';
     
-    switch(errorCode) {
-      case 2: 
-        errorMessage = 'Invalid video ID'; 
+    switch (errorCode) {
+      case 2:
+        errorMessage = 'Invalid video ID';
         break;
-      case 5: 
-        errorMessage = 'HTML5 player error'; 
+      case 5:
+        errorMessage = 'HTML5 player error';
         break;
-      case 100: 
-        errorMessage = 'Video not found'; 
+      case 100:
+        errorMessage = 'Video not found';
         break;
       case 101:
-      case 150: 
-        errorMessage = 'Video cannot be embedded or is restricted'; 
+      case 150:
+        errorMessage = 'Video cannot be embedded or is restricted';
         break;
     }
     
@@ -741,7 +765,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     this.isLoadingVideo.set(false);
     this.isSyncing.set(false);
     
-    // Reset video state on error
     if (this.isHost()) {
       setTimeout(() => this.stopVideo(), 2000);
     }
@@ -825,7 +848,6 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            console.log('[Stop] Video stopped successfully');
             this.resetVideoState();
           },
           error: (error) => {
@@ -894,9 +916,9 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
 
   scrollToInput(): void {
     this.videoUrlInput?.nativeElement.focus();
-    this.videoUrlInput?.nativeElement.scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'center' 
+    this.videoUrlInput?.nativeElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
     });
   }
 

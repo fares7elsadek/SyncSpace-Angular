@@ -139,12 +139,12 @@ export class InviteServerComponent implements OnInit, OnDestroy {
         next: (response) => {
           this.hasJoined = true;
           this.isJoining = false;
-          this.toastr.success(response.message || "Successfully joined the server!");
+          this.toastr.success("Successfully joined the server!");
           this.startCountdown();
         },
         error: (err) => {
           this.isJoining = false;
-          this.handleError(err.error?.error || "Failed to join server");
+          this.handleError("Failed to join server");
         }
       });
   }

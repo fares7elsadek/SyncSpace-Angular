@@ -66,7 +66,6 @@
                     </svg>
                 </button>
                 </ng-container>
-               
             </div>
 
             <div class="space-y-0.5 px-2">
@@ -105,11 +104,11 @@
                     </svg>
                 </button>
                 </ng-container>
-               
             </div>
 
             <div class="space-y-0.5 px-2">
                 <ng-container *ngFor="let channel of streamingChannels()">
+                    <!-- Channel Link -->
                     <div 
                         [routerLink]="`/app/server/${serverId}/channel/room/${channel.id}`"  
                         class="flex items-center px-2 py-2.5 rounded-lg cursor-pointer hover:bg-discord-light/30 transition-colors duration-150 group">
@@ -122,6 +121,32 @@
                                 : 'text-discord-text-muted group-hover:text-white'">
                               {{channel.name}}
                         </span>
+                    </div>
+
+                    <!-- Viewers List -->
+                    <div *ngIf="channel.viewers && channel.viewers.length > 0" 
+                         class="ml-7 space-y-1 mb-2">
+                        <ng-container *ngFor="let viewer of channel.viewers">
+                            <div class="flex items-center px-2 py-1.5 rounded hover:bg-discord-light/20 cursor-pointer group/viewer">
+                                <!-- Avatar -->
+                                <div class="relative mr-2">
+                                    <img 
+                                        [src]="viewer.user.avatarUrl || 'assets/default-avatar.png'" 
+                                        [alt]="viewer.user.username"
+                                        class="w-6 h-6 rounded-full object-cover"
+                                    />
+                                    <!-- Online status indicator -->
+                                    <div *ngIf="viewer.user.isOnline" 
+                                         class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-discord-sidebar">
+                                    </div>
+                                </div>
+                                
+                                <!-- Username -->
+                                <span class="text-xs text-discord-text-muted group-hover/viewer:text-white transition-colors truncate">
+                                    {{ viewer.user.displayName || viewer.user.username }}
+                                </span>
+                            </div>
+                        </ng-container>
                     </div>
                 </ng-container>
             </div>

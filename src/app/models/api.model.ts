@@ -164,7 +164,10 @@ export interface RoomState {
   lastUpdatedAt: string;
   playbackRate: number;
   channel?:ChannelDto;
-  hoster?:UserDto
+  hoster?:UserDto;
+  videoTitle?:string;
+  thumbnail?:string;
+  viewers?:RoomViewer[];
 }
 
 export interface VideoControlEvent {
@@ -173,4 +176,10 @@ export interface VideoControlEvent {
   timestamp?: number;
   videoUrl?: string;
   user: UserDto;
+}
+
+export interface RoomViewer {
+  id:string;
+  user:UserDto;
+  connectedAt:string;
 }

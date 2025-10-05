@@ -14,6 +14,7 @@ import {
   NotificationDto, 
   PaginatedMessage, 
   RoomState, 
+  RoomViewer, 
   SendMessageRequest, 
   ServerDto, 
   ServerMember, 
@@ -125,6 +126,22 @@ export class ApiService {
       return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/channels/room/${roomId}/reset`,{});
   }
 
+  connectToRoom(roomId: string): Observable<ApiResponse<void>> {
+      return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/channels/room/${roomId}/connect`,{});
+  }
+
+  disconnectToRoom(roomId: string): Observable<ApiResponse<void>> {
+      return this._httpClient.post<ApiResponse<void>>(`${this.baseUrl}/channels/room/${roomId}/disconnect`,{});
+  }
+
+  getRoomViewers(channelId: string): Observable<ApiResponse<RoomViewer[]>>{
+    return this._httpClient.get<ApiResponse<RoomViewer[]>>(`${this.baseUrl}/channels/${channelId}/viewers`);
+  }
+
+  getUserActivity(): Observable<ApiResponse<RoomState[]>>{
+    return this._httpClient.get<ApiResponse<RoomState[]>>(`${this.baseUrl}/channels/user/activity`);
+  }
+
   
   // Message endpoints
   getChannelMessages(channelId: string, size: number = 0, cursor: string = ""): Observable<ApiResponse<PaginatedMessage>> {
@@ -219,5 +236,11 @@ export class ApiService {
     const formData = new FormData();
     formData.append('file', file);
     return this._httpClient.post<ApiResponse<{ url: string }>>(`${this.baseUrl}/upload`, formData);
+  }
+
+  fetchVideoDetails(videoId: string): any {
+    return this._httpClient.get<any>(
+      `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${environment.youtubeApiKey}&part=snippet`
+    );
   }
 }
