@@ -181,7 +181,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    const roomId = this.currentState.roomId || this.channelId;
+    const roomId = this.channelId;
     
     this.clearSyncCheckInterval();
     clearTimeout(this.seekDebounceTimeout);
@@ -212,7 +212,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
   }
 
   private cleanupCurrentRoom(): void {
-    const roomId = this.channelId || this.currentState.roomId;
+    const roomId = this.channelId;
     
     if (roomId) {
       if (confirm("Are you sure you want to leave?")) {
@@ -315,7 +315,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
             this.applyToVideo(data);
           }
           
-          return this.apiService.connectToRoom(data.roomId);
+          return this.apiService.connectToRoom(this.channelId);
         })
       )
       .subscribe({
