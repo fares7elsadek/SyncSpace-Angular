@@ -10,6 +10,7 @@ import { ToastrService } from 'ngx-toastr';
 import { WebsocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
+import { RoomConnectionEvent } from '../../services/room-connection-event';
 
 interface Message {
   id: string;
@@ -101,7 +102,8 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
     private tostr: ToastrService,
     private websocketService: WebsocketService,
     private authService: AuthService,
-    private http: HttpClient
+    private http: HttpClient,
+    private roomConnectionEvent:RoomConnectionEvent
   ) {
     effect(() => {
       const msgs = this.messages();
@@ -200,6 +202,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (response) => {
             console.log('[Room] Disconnected on destroy:', response.message);
+            this.roomConnectionEvent.notifyRoomConnection();
           },
           error: (error) => {
             console.error('[Room] Error disconnecting on destroy:', error);
@@ -222,6 +225,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
             next: (response) => {
               this.tostr.success(response.message);
               this.performCleanup();
+              this.roomConnectionEvent.notifyRoomConnection();
             },
             error: (error) => {
               console.error('[Room] Error disconnecting:', error);
@@ -324,6 +328,7 @@ export class RoomChannelComponent implements OnInit, OnDestroy {
           
           this.subscribeToRoomUpdates(this.currentState.roomId);
           this.isConnected$.next(true);
+          this.roomConnectionEvent.notifyRoomConnection();
           
           this.websocketService.getRoomResetEvent(this.currentState.roomId)
             .pipe(takeUntil(this.destroy$))

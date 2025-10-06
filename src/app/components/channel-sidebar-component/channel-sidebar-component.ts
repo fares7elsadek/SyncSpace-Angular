@@ -9,6 +9,8 @@ import { FormsModule } from '@angular/forms';
 import { UserAreaComponent } from '../user-area-component/user-area-component';
 import { NewMemberEvent } from '../../services/new-member-event';
 import { DeleteServerEvent } from '../../services/delete-server-event';
+import { RoomChannelComponent } from '../room-channel-component/room-channel-component';
+import { RoomConnectionEvent } from '../../services/room-connection-event';
 
 interface ChannelWithViewers extends ChannelDto {
   viewers?: RoomViewer[];
@@ -59,7 +61,8 @@ export class ChannelSidebarComponent implements OnInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private tostr: ToastrService,
     private newMemberEvent: NewMemberEvent,
-    private deleteSeverEvent: DeleteServerEvent
+    private deleteSeverEvent: DeleteServerEvent,
+    private roomConnectionEvent:RoomConnectionEvent
   ) {}
 
   ngOnInit() {
@@ -78,7 +81,9 @@ export class ChannelSidebarComponent implements OnInit, OnDestroy {
         this.loadServerInfo();
         this.loadChannels();
         this.loadServerMemberInfo();
-        this.startViewersPolling();
+        this.roomConnectionEvent
+        .roomConnection$.pipe(takeUntil(this.destroy$))
+        .subscribe(() => this.loadViewersForStreamingChannels())
       });
   }
 
@@ -139,14 +144,7 @@ export class ChannelSidebarComponent implements OnInit, OnDestroy {
       });
   }
 
-  startViewersPolling() {
-    // Poll viewers every 10 seconds
-    interval(10000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.loadViewersForStreamingChannels();
-      });
-  }
+  
 
   loadServerInfo() {
     if (!this.serverId) return;
